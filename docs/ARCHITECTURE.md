@@ -72,3 +72,10 @@ Seed data in `src/data/`: `roles.ts` (≥40 roles, medians by level), `cities.ts
 - Money formatting via `formatMoney(amount, currency)` in `src/lib/format.ts`.
 - No `any`. `npx tsc --noEmit` and `npm run lint` must pass; `npm run build` must pass.
 - Do not run `next build` from parallel agents (shared `.next`); type-check with `tsc --noEmit` instead. Only the integration step runs the full build.
+
+## Asset facts (as committed)
+- `public/models/robot-head.glb` (4.0 MB, meshopt + WebP textures): chrome android head on a pedestal, Y-up, face toward +Z. Fit by bounding box; ~1.0 unit tall.
+- `public/models/watch.glb` (4.3 MB): luxury watch with curved strap. **Dial faces +Y** — rotate `x = +Math.PI/2` so the dial faces the camera; rose-gold indices, black dial.
+- `public/images/robot-face.jpg|webp` (1600px), `public/images/watch.jpg`, `public/images/studio-backdrop.jpg|webp` (2400px), `public/images/employee-backdrop.jpg` (2400px, arrives via the fetch-assets workflow; treat as optional).
+- `src/data/films.json` — optional scroll-scrub film URLs (`robot`, `watch`, `employee`), all `null` unless Runway films are generated later. `ScrollFilm` uses the film when present, otherwise renders its 3D children.
+- drei `useGLTF` enables the meshopt decoder by default; do not use Draco. Do not use `Environment preset=…` (it fetches an HDR from a CDN) — build the environment from `<Lightformer>`s or plain lights.
