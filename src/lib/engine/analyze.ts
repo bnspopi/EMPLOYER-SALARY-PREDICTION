@@ -85,7 +85,6 @@ function sectionText(lines: string[], re: RegExp): string {
 /*  Field extractors                                                   */
 /* ------------------------------------------------------------------ */
 
-const SENIOR_WORDS = /\b(senior|sr\.?|staff|principal|lead|head|director|vp|chief|architect|manager)\b/i;
 const ENTRY_WORDS = /\b(intern|internship|junior|jr\.?|associate|entry[- ]level|graduate|trainee|apprentice)\b/i;
 const LEAD_WORDS = /\b(lead|staff|principal|head|director|vp|svp|evp|chief|cto|ceo|founder)\b/i;
 

@@ -11,9 +11,8 @@ import { findRoleDef, skillLookup } from "./catalog";
 const AI_CATEGORIES = new Set(["ai"]);
 
 function hasLeadershipSignal(profile: Profile): boolean {
-  const leadershipSkills = profile.skills.some((s) =>
-    ["leadership", "management"].some((c) => s.category === "leadership") ||
-    /leadership|manage|mentor|team|stakeholder|cross-functional|hiring|people/i.test(s.name),
+  const leadershipSkills = profile.skills.some(
+    (s) => s.category === "leadership" || /leadership|manage|mentor|team|stakeholder|cross-functional|hiring|people/i.test(s.name),
   );
   const text = profile.rawText.toLowerCase();
   const scopeMention = /team of \d|\d+\s+(?:engineers|reports|people|direct reports)|managed a team|led a team|cross-functional/.test(text);
@@ -167,16 +166,22 @@ export function score(profile: Profile, estimate: MarketEstimate): ResumeScore {
   const severityRank = { HIGH: 0, MED: 1, LOW: 2 };
   improvements.sort((a, b) => severityRank[a.severity] - severityRank[b.severity] || b.impactMax - a.impactMax);
 
-  // ---- Strengths ----
-  const strengths: Strength[] = profile.skills
-    .filter((s) => (s.level === "Expert" || s.level === "Advanced") && s.demand >= 55)
+  // ---- Strengths (prefer the pay-lifting skills the pricing model surfaced) ----
+  const liftByName = new Map(estimate.skillsLifting.map((s) => [s.name, s.contribution]));
+  const strengthPool = estimate.skillsLifting.length
+    ? estimate.skillsLifting
+    : profile.skills.filter((s) => (s.level === "Expert" || s.level === "Advanced") && s.demand >= 55);
+  const strengths: Strength[] = strengthPool
     .sort((a, b) => b.demand + b.salaryDriver - (a.demand + a.salaryDriver))
     .slice(0, 4)
-    .map((s) => ({
-      title: s.name,
-      detail: `${s.level} · demand ${s.demand}/100 · ${s.salaryDriver >= 0 ? "lifts" : "drags"} pay ${Math.abs(s.salaryDriver)}pts`,
-      demand: s.demand,
-    }));
+    .map((s) => {
+      const lift = liftByName.get(s.name) ?? 0;
+      return {
+        title: s.name,
+        detail: `${s.level} · demand ${s.demand}/100${lift > 0 ? ` · adds ~${lift.toLocaleString("en-US")} ${estimate.currency}` : ""}`,
+        demand: s.demand,
+      };
+    });
 
   // ---- Gaps (missing core skills) ----
   const gaps: Gap[] = missingCore
