@@ -22,7 +22,9 @@ jobs:
         with:
           node-version: 22
       - name: Download raw sources
-        run: node scripts/fetch-assets.mjs --raw
+        run: |
+          node scripts/fetch-assets.mjs --raw
+          ls -la .assets-raw
       - name: Install image tools
         run: sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick webp
       - name: Optimize images
@@ -46,4 +48,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add public/images public/models
           git commit -m "chore(assets): add optimized generated 3D models and hero images [skip ci]" || echo "nothing to commit"
-          git push
+          git pull --rebase -X ours origin "${{ github.ref_name }}" || git pull --rebase origin "${{ github.ref_name }}"
+          git push origin HEAD:"${{ github.ref_name }}"
