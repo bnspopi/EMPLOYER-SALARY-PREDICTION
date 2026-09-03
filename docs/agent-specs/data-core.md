@@ -1,3 +1,19 @@
+# ⚠️ CURRENT STATE OVERRIDE (read this first — the repo is partially built)
+
+These files ALREADY EXIST and are complete — DO NOT recreate or edit them:
+`src/data/skills.ts` (SKILLS, 200+), `src/data/cities.ts` (CITIES, COUNTRY_META, FX_TO_USD, PRIMARY_CITY_LABELS, cityLabel), `src/data/industries.ts` (INDUSTRIES, DEFAULT_INDUSTRY).
+
+YOUR REMAINING FILES (create these): `src/data/roles.ts`, `src/data/certs.ts`, `src/data/courses.ts`, and replace the stub `src/lib/engine/catalog.ts`.
+- roles.ts: export ROLES: RoleDef[] with ALL 50 canonical roles (see the list below). Match the RoleDef interface in src/data/types.ts EXACTLY.
+- certs.ts: export CERTS: CertDef[] (≥35). courses.ts: export COURSES: CourseDef[] (≥50). Match CertDef/CourseDef in src/data/types.ts.
+- catalog.ts: replace the stub. It must import ROLES from "@/data/roles", CITIES/COUNTRY_META/FX_TO_USD from "@/data/cities", SKILLS from "@/data/skills", INDUSTRIES from "@/data/industries". Keep the exported names the stub has (listRoles, listLocations, findLocation, findRole) AND add: findRoleDef(nameOrAlias) → RoleDef, findCity(labelOrCity) → CityDef, skillLookup(name) → SkillDef|undefined, normalizeSkill(raw) → canonical name|undefined, LEVELS: Level[], levelFromYears(years) → Level. findLocation must return a LocationOption {city,country,currency,label,multiplier,remote} built from CITIES and accept "Los Angeles", "la", "london", "remote", "remote uk", "San Francisco, US" etc. findRole must fuzzy-match "Sr. PM","SWE","software developer" → canonical.
+- The coreSkills[].skill values in roles.ts and certifications[] MUST use skill names that exist in src/data/skills.ts and cert names that exist in certs.ts (keep them consistent).
+- Verify: `npx tsc --noEmit` clean for these files, and `node -e "require('ts-node')"` not needed — just tsc.
+
+Everything below is the original spec (still applies for content/quality of roles.ts, but ignore any instruction to write skills.ts/cities.ts/industries.ts — those are done):
+
+---
+
 # Agent spec: data-core
 
 

@@ -1,3 +1,14 @@
+# ⚠️ CURRENT STATE OVERRIDE (read this first — the repo is partially built)
+
+These ALREADY EXIST and are complete — DO NOT recreate: `src/data/jobs.ts` (JOBS, 60+), `src/data/faq.ts` (FAQ), `src/data/testimonials.ts` (TESTIMONIALS).
+
+YOUR REMAINING FILES (create these): `src/data/guides.ts` (export GUIDES: SalaryGuide[] from "@/lib/types" — all 18 guides), `src/data/blog.ts` (export POSTS: BlogPost[] from "@/data/types" — 10 posts), and replace the stub `src/lib/engine/guides.ts` so it imports GUIDES from "@/data/guides" and exports listGuides()/getGuide(slug). Do NOT edit jobs.ts/faq.ts/testimonials.ts.
+NOTE the engine/guides.ts currently fails tsc because @/data/guides doesn't exist yet — creating src/data/guides.ts fixes it. Keep the SalaryGuide field names exactly as in src/lib/types.ts.
+
+Everything below is the original spec (ignore instructions about jobs.ts/faq.ts/testimonials.ts — done):
+
+---
+
 # Agent spec: data-content
 
 
