@@ -23,8 +23,8 @@ async function download(name, url) {
   if (fs.existsSync(dest) && fs.statSync(dest).size > 0) return dest;
   fs.mkdirSync(rawDir, { recursive: true });
   process.stdout.write(`↓ ${name} … `);
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`${name}: HTTP ${res.status}`);
+  const res = await fetch(url, { headers: { "user-agent": "Mozilla/5.0 (compatible; PayLensAssetFetcher/1.0)", accept: "*/*" }, redirect: "follow" });
+  if (!res.ok) throw new Error(`${name}: HTTP ${res.status} ${res.statusText}`);
   const buf = Buffer.from(await res.arrayBuffer());
   fs.writeFileSync(dest, buf);
   console.log(`${(buf.length / 1e6).toFixed(1)} MB`);
@@ -33,7 +33,16 @@ async function download(name, url) {
 
 async function main() {
   if (rawOnly) {
-    for (const [name, url] of Object.entries(manifest.raw)) await download(name, url);
+    let failed = 0;
+    for (const [name, url] of Object.entries(manifest.raw)) {
+      try {
+        await download(name, url);
+      } catch (e) {
+        failed++;
+        console.error(`assets: FAILED ${name}: ${e.message}`);
+      }
+    }
+    if (failed) process.exitCode = 1;
     return;
   }
   const missing = Object.entries(manifest.outputs).filter(([out]) => !fs.existsSync(path.join(root, out)));
