@@ -1,9 +1,6 @@
 "use client";
-import { useScroll, type MotionValue } from "framer-motion";
+import { useScroll, type MotionValue, type UseScrollOptions } from "framer-motion";
 import type { RefObject } from "react";
-
-type Edge = "start" | "end" | "center" | (string & {});
-type Intersection = `${Edge} ${Edge}` | Edge;
 
 /**
  * Scroll progress (0 → 1) of `ref` across the viewport. Returns a framer-motion
@@ -12,7 +9,7 @@ type Intersection = `${Edge} ${Edge}` | Edge;
  */
 export function useScrollProgress(
   ref: RefObject<HTMLElement | null>,
-  offset: [Intersection, Intersection] = ["start start", "end end"],
+  offset: UseScrollOptions["offset"] = ["start start", "end end"],
 ): MotionValue<number> {
   const { scrollYProgress } = useScroll({ target: ref, offset });
   return scrollYProgress;
