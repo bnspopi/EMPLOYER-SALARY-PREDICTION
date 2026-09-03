@@ -19,7 +19,6 @@ async function extractPdfText(file: File): Promise<string> {
       .replace(/\s+\n/g, "\n");
     pages.push(line);
   }
-  await doc.destroy();
   return pages.join("\n\n").replace(/[ \t]+/g, " ").trim();
 }
 
