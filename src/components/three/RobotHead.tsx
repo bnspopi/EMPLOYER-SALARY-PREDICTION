@@ -1,5 +1,5 @@
 "use client";
-import { useLayoutEffect, useMemo, useRef } from "react";
+import { useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
@@ -14,16 +14,16 @@ interface Props {
 }
 
 export function RobotHead({ progress, pointer }: Props) {
-  const { scene } = useGLTF(MODEL);
+  const { scene } = useGLTF(MODEL, false);
   const group = useRef<THREE.Group>(null);
 
-  // Clone so repeated mounts (dynamic import) never share/mutate a cached graph.
-  const model = useMemo(() => scene.clone(true), [scene]);
-
-  // Compute eye positions from the bounding box, and light any emissive "eye" mats.
-  const { addedEyes, eyePositions } = useMemo(() => {
+  // Clone (so repeated mounts never mutate the cached graph), center by bounding
+  // box, scale to ~2.2 units tall, light emissive "eye" materials, and derive
+  // fallback eye-sphere positions — all deterministic from `scene`.
+  const { model, addedEyes, eyePos } = useMemo(() => {
+    const clone = scene.clone(true);
     let found = false;
-    model.traverse((obj) => {
+    clone.traverse((obj) => {
       if (!(obj instanceof THREE.Mesh)) return;
       const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
       for (const m of mats) {
@@ -38,32 +38,26 @@ export function RobotHead({ progress, pointer }: Props) {
         }
       }
     });
-    return { addedEyes: !found, eyePositions: [] as THREE.Vector3[] };
-  }, [model]);
-
-  const eyeMeta = useRef({ y: 0.62, x: 0.13, z: 0.5, added: addedEyes });
-
-  useLayoutEffect(() => {
-    const box = new THREE.Box3().setFromObject(model);
+    const box = new THREE.Box3().setFromObject(clone);
     const size = new THREE.Vector3();
     const center = new THREE.Vector3();
     box.getSize(size);
     box.getCenter(center);
-    // Center on origin, then scale so the head is ~2.2 units tall.
-    model.position.sub(center);
+    clone.position.sub(center);
     const scale = 2.2 / (size.y || 1);
-    model.scale.setScalar(scale);
-    // face +Z by default (asset is authored that way); keep upright.
-    eyeMeta.current = {
-      y: (0.62 * size.y - size.y / 2) * scale,
-      x: 0.13 * size.x * scale,
-      z: (size.z / 2) * scale,
-      added: addedEyes,
+    clone.scale.setScalar(scale);
+    return {
+      model: clone,
+      addedEyes: !found,
+      eyePos: {
+        x: 0.13 * size.x * scale,
+        y: (0.62 * size.y - size.y / 2) * scale,
+        z: (size.z / 2) * scale,
+      },
     };
-    void eyePositions;
-  }, [model, addedEyes, eyePositions]);
+  }, [scene]);
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     const g = group.current;
     if (!g) return;
     const p = progress.get();
@@ -72,7 +66,7 @@ export function RobotHead({ progress, pointer }: Props) {
     const k = 1 - Math.pow(0.0015, delta);
     g.rotation.y += (targetY - g.rotation.y) * k;
     g.rotation.x += (targetX - g.rotation.x) * k;
-    const t = performance.now() / 1000;
+    const t = state.clock.elapsedTime;
     g.position.y = Math.sin(t) * 0.04;
     g.scale.setScalar(1 + Math.sin(t * 0.8) * 0.01);
   });
@@ -80,9 +74,9 @@ export function RobotHead({ progress, pointer }: Props) {
   return (
     <group ref={group}>
       <primitive object={model} />
-      {eyeMeta.current.added
+      {addedEyes
         ? [-1, 1].map((s) => (
-            <mesh key={s} position={[s * eyeMeta.current.x, eyeMeta.current.y, eyeMeta.current.z]}>
+            <mesh key={s} position={[s * eyePos.x, eyePos.y, eyePos.z]}>
               <sphereGeometry args={[0.07, 20, 20]} />
               <meshStandardMaterial color="#4ad9ff" emissive="#4ad9ff" emissiveIntensity={3} toneMapped={false} />
             </mesh>
@@ -92,4 +86,4 @@ export function RobotHead({ progress, pointer }: Props) {
   );
 }
 
-useGLTF.preload(MODEL);
+useGLTF.preload(MODEL, false);

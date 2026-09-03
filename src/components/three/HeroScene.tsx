@@ -1,6 +1,6 @@
 "use client";
 import { Suspense } from "react";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Canvas, useFrame } from "@react-three/fiber";
 import { ContactShadows } from "@react-three/drei";
 import type { MotionValue } from "framer-motion";
 import { RobotHead } from "./RobotHead";
@@ -11,13 +11,13 @@ import { SceneLights } from "./Lights";
 import { usePointer } from "@/hooks/usePointer";
 
 function CameraRig({ progress }: { progress: MotionValue<number> }) {
-  const { camera } = useThree();
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
+    const cam = state.camera;
     const p = progress.get();
     const targetZ = 4.6 - p * 1.2; // 4.6 → 3.4
     const k = 1 - Math.pow(0.01, delta);
-    camera.position.z += (targetZ - camera.position.z) * k;
-    camera.lookAt(0, 0, 0);
+    cam.position.z += (targetZ - cam.position.z) * k;
+    cam.lookAt(0, 0, 0);
   });
   return null;
 }

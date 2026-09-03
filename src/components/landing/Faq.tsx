@@ -12,7 +12,7 @@ const ITEMS = FAQ ?? FAQ_FALLBACK;
 export function Faq() {
   const [open, setOpen] = useState<number | null>(0);
   return (
-    <Section className="py-24 md:py-32">
+    <Section id="faq" className="scroll-mt-24 py-24 md:py-32">
       <Reveal>
         <Eyebrow tone="cyan">Questions</Eyebrow>
         <h2 className="display mt-3 text-5xl md:text-7xl">Frequently asked.</h2>
@@ -26,6 +26,8 @@ export function Faq() {
                 <button
                   className="flex w-full items-center justify-between gap-4 py-5 text-left"
                   aria-expanded={isOpen}
+                  aria-controls={`faq-panel-${i}`}
+                  id={`faq-trigger-${i}`}
                   onClick={() => setOpen(isOpen ? null : i)}
                 >
                   <span className="text-lg font-medium text-fg">{item.q}</span>
@@ -37,6 +39,9 @@ export function Faq() {
                 <AnimatePresence initial={false}>
                   {isOpen ? (
                     <motion.div
+                      id={`faq-panel-${i}`}
+                      role="region"
+                      aria-labelledby={`faq-trigger-${i}`}
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: "auto", opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}

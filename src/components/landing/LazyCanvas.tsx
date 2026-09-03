@@ -5,8 +5,11 @@ import { cn } from "@/lib/utils";
 /**
  * Mounts an R3F canvas only when it approaches the viewport (IntersectionObserver),
  * shows a poster until then, and reports `active` (currently on-screen) so the scene
- * can switch to `frameloop="demand"` when scrolled away. Renders the poster forever
- * when `reduced` (prefers-reduced-motion) is set.
+ * can switch to `frameloop="demand"` when scrolled away. Once the canvas scrolls far
+ * out of view (past a wider margin) it unmounts so R3F disposes the WebGL context —
+ * keeping at most one live context around the viewport instead of three for the
+ * session. The poster stays mounted throughout. Renders the poster forever when
+ * `reduced` (prefers-reduced-motion) is set.
  */
 export function LazyCanvas({
   poster,
@@ -27,17 +30,28 @@ export function LazyCanvas({
     if (reduced) return;
     const el = ref.current;
     if (!el) return;
+    // Mount when within 300px of the viewport.
     const near = new IntersectionObserver(
       ([e]) => {
         if (e.isIntersecting) setMounted(true);
       },
       { rootMargin: "300px" },
     );
+    // Unmount (release the GL context) only once well past the viewport (1200px),
+    // giving hysteresis so scrolling near the boundary doesn't thrash mount state.
+    const far = new IntersectionObserver(
+      ([e]) => {
+        if (!e.isIntersecting) setMounted(false);
+      },
+      { rootMargin: "1200px" },
+    );
     const on = new IntersectionObserver(([e]) => setActive(e.isIntersecting), { threshold: 0.01 });
     near.observe(el);
+    far.observe(el);
     on.observe(el);
     return () => {
       near.disconnect();
+      far.disconnect();
       on.disconnect();
     };
   }, [reduced]);

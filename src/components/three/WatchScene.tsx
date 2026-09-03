@@ -1,6 +1,6 @@
 "use client";
 import { Suspense, useMemo, useRef } from "react";
-import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { MotionValue } from "framer-motion";
 import { WatchModel } from "./WatchModel";
@@ -15,7 +15,6 @@ function lerpV(out: THREE.Vector3, a: THREE.Vector3, b: THREE.Vector3, t: number
 }
 
 function CameraPath({ progress }: { progress: MotionValue<number> }) {
-  const { camera } = useThree();
   const tmpPos = useRef(new V(0.8, 0.6, 4.2));
   const tmpTarget = useRef(new V(0, 0, 0));
   const kf = useMemo(
@@ -30,7 +29,8 @@ function CameraPath({ progress }: { progress: MotionValue<number> }) {
     [],
   );
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
+    const camera = state.camera;
     const p = progress.get();
     const pos = tmpPos.current;
     const tgt = tmpTarget.current;
@@ -59,11 +59,20 @@ function CameraPath({ progress }: { progress: MotionValue<number> }) {
 function Dust() {
   const ref = useRef<THREE.Points>(null);
   const positions = useMemo(() => {
+    // Deterministic (mulberry32) so the buffer is stable across re-renders.
+    let seed = 0x9e3779b9;
+    const rnd = () => {
+      seed |= 0;
+      seed = (seed + 0x6d2b79f5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
     const arr = new Float32Array(600 * 3);
     for (let i = 0; i < 600; i++) {
-      arr[i * 3] = (Math.random() - 0.5) * 6;
-      arr[i * 3 + 1] = (Math.random() - 0.5) * 6;
-      arr[i * 3 + 2] = (Math.random() - 0.5) * 4 - 1;
+      arr[i * 3] = (rnd() - 0.5) * 6;
+      arr[i * 3 + 1] = (rnd() - 0.5) * 6;
+      arr[i * 3 + 2] = (rnd() - 0.5) * 4 - 1;
     }
     return arr;
   }, []);

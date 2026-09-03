@@ -17,6 +17,7 @@ import { clamp, round } from "@/lib/utils";
 import { formatMoney } from "@/lib/format";
 import { findRoleDef, findLocation } from "./catalog";
 import { INDUSTRIES } from "@/data/industries";
+import { FX_TO_USD } from "@/data/cities";
 
 const SENIOR_RE = /\b(senior|sr\.?|architect)\b/i;
 const ENTRY_RE = /\b(intern|junior|jr\.?|associate|entry|graduate)\b/i;
@@ -54,7 +55,11 @@ export function evaluateOffer(offer: OfferInput, profile?: Profile): OfferVerdic
   const level: Level = profile ? profile.level : levelFromTitle(offer.title);
 
   const industryMult = offer.description ? industryMultiplierFromText(offer.description) : 1;
-  const median = round(roleDef.medians[level] * location.multiplier * industryMult, 100);
+  // The multiplier model yields a median in the LOCATION's local-nominal currency.
+  // If the offer overrides the currency, convert the median (and the floor/ceiling
+  // derived from it) into that currency so base is compared like-for-like.
+  const fx = currency === location.currency ? 1 : FX_TO_USD[location.currency] / FX_TO_USD[currency];
+  const median = round(roleDef.medians[level] * location.multiplier * industryMult * fx, 100);
   const floor = round(median * roleDef.p25, 500);
   const ceiling = round(median * roleDef.p75, 500);
 

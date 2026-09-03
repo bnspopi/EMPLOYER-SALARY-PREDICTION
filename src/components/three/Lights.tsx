@@ -13,7 +13,7 @@ export function SceneLights({ rim = "#4ad9ff", rimIntensity = 6, keyColor = "#ff
   return (
     <>
       <ambientLight intensity={0.25} />
-      <directionalLight position={[3, 4, 3]} intensity={keyIntensity} color={keyColor} castShadow />
+      <directionalLight position={[3, 4, 3]} intensity={keyIntensity} color={keyColor} />
       <spotLight position={[-4, 3, -4]} angle={0.5} penumbra={0.8} intensity={rimIntensity} color={rim} />
       <directionalLight position={[-2, 1, 4]} intensity={0.6} color="#cfd6e0" />
     </>

@@ -54,7 +54,13 @@ export function benchmarkJobDescription(input: RecruiterInput): RecruiterReport 
   const range = { min: round(median * roleDef.p25, 500), max: round(median * roleDef.p75, 500) };
 
   // ---- By city ----
-  const baseCities = ["San Francisco", "New York", "Austin", "Seattle"];
+  // Benchmark against cities in the report's OWN country so every row shares the
+  // report currency. Reusing US-nominal multipliers under a non-US currency label
+  // (e.g. SF figures printed as GBP) mixes currencies in one table.
+  const baseCities = CITIES.filter((c) => c.country === loc.country && !c.remote)
+    .sort((a, b) => b.multiplier - a.multiplier)
+    .slice(0, 4)
+    .map((c) => c.city);
   const cityNames = uniq([...baseCities, "__REMOTE__", loc.remote ? "__REMOTE__" : loc.city]);
   const byCity = cityNames.map((name) => {
     if (name === "__REMOTE__") {

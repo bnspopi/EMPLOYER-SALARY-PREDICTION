@@ -489,7 +489,7 @@ export const ROLES: RoleDef[] = [
 
   role(
     "UX Designer", "design",
-    ["user experience designer", "ux/ui designer", "ux researcher", "usability designer", "ux/ui"],
+    ["user experience designer", "ux researcher", "usability designer", "ux/ui"],
     [67500, 95000, 128000, 166250], [0.82, 1.18],
     [["User Experience Design", 9], ["User Research", 8], ["Wireframing", 7], ["Prototyping", 7], ["Usability Testing", 7], ["Information Architecture", 6], ["Figma", 7], ["Interaction Design", 6]],
     ["Nielsen Norman Group UX Certification", "Google UX Design Professional Certificate"],
@@ -650,7 +650,7 @@ export const ROLES: RoleDef[] = [
 
   role(
     "Customer Service Lead", "support",
-    ["customer service supervisor", "customer support lead", "customer service manager", "support team lead", "cs lead", "contact center supervisor"],
+    ["customer service supervisor", "customer support lead", "customer service manager", "support team lead", "cs lead", "contact center supervisor", "customer success lead", "customer success manager", "customer success", "csm"],
     [55000, 78000, 105000, 136000], [0.82, 1.18],
     [["Customer Support", 8], ["Team Leadership", 8], ["Customer Success", 7], ["Performance Management", 6], ["Communication", 6], ["Conflict Resolution", 6], ["CRM", 5], ["Process Improvement", 6]],
     ["HubSpot Inbound Marketing Certification", "Lean Six Sigma Green Belt"],
@@ -834,7 +834,7 @@ export const ROLES: RoleDef[] = [
 
   role(
     "Marketing Manager", "marketing",
-    ["marketing lead", "brand manager", "growth marketing manager", "product marketing manager", "demand generation manager", "marketing director"],
+    ["marketing lead", "head of marketing", "brand manager", "growth marketing manager", "product marketing manager", "demand generation manager", "marketing director"],
     [78000, 98000, 125000, 158000], [0.82, 1.18],
     [["Marketing Strategy", 8], ["Marketing Analytics", 7], ["Brand Strategy", 6], ["Demand Generation", 7], ["Campaign Management", 7], ["Content Strategy", 6], ["Team Leadership", 6], ["Product Marketing", 6]],
     ["HubSpot Inbound Marketing Certification", "Google Ads Certification", "PMP (Project Management Professional)"],

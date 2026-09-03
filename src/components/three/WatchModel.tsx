@@ -8,7 +8,7 @@ const MODEL = "/models/watch.glb";
 
 /** Watch GLB: dial faces +Y in the asset, so rotate x = +PI/2 to face the camera. */
 export function WatchModel() {
-  const { scene } = useGLTF(MODEL);
+  const { scene } = useGLTF(MODEL, false);
   const model = useMemo(() => scene.clone(true), [scene]);
   const spin = useRef<THREE.Group>(null);
 
@@ -36,4 +36,4 @@ export function WatchModel() {
   );
 }
 
-useGLTF.preload(MODEL);
+useGLTF.preload(MODEL, false);

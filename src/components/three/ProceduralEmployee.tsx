@@ -22,8 +22,8 @@ export function ProceduralEmployee({ pointer }: Props) {
   const foreR = useRef<Group>(null);
   const orbit = useRef<Group>(null);
 
-  useFrame((_, delta) => {
-    const t = performance.now() / 1000;
+  useFrame((state, delta) => {
+    const t = state.clock.elapsedTime;
     if (head.current) {
       head.current.rotation.y += (pointer.current.x * 0.4 - head.current.rotation.y) * (1 - Math.pow(0.01, delta));
       head.current.rotation.x += (pointer.current.y * 0.2 - head.current.rotation.x) * (1 - Math.pow(0.01, delta));

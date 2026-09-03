@@ -12,14 +12,24 @@ import films from "@/data/films.json";
 
 const WatchScene = dynamic(() => import("@/components/three/WatchScene"), { ssr: false });
 
-function ChapterBlock({ chapter, progress }: { chapter: Chapter; progress: MotionValue<number> }) {
+function ChapterBlock({
+  chapter,
+  progress,
+  reduced,
+}: {
+  chapter: Chapter;
+  progress: MotionValue<number>;
+  reduced: boolean;
+}) {
   const [r0, r1] = chapter.range;
   const inA = Math.max(0, r0 + 0.02);
   const outA = Math.min(1, r1 - 0.04);
+  // Opacity is the sequential reveal (functional, kept under reduced motion);
+  // the y slide is decorative parallax and is flattened when reduced.
   const opacity = useTransform(progress, [r0, inA, outA, r1], [r0 === 0 ? 1 : 0, 1, 1, 0]);
   const y = useTransform(progress, [r0, inA, outA, r1], [40, 0, 0, -40]);
   return (
-    <motion.div style={{ opacity, y }} className="absolute left-5 top-1/2 max-w-sm -translate-y-1/2 md:left-16">
+    <motion.div style={{ opacity, y: reduced ? 0 : y }} className="absolute left-5 top-1/2 max-w-sm -translate-y-1/2 md:left-16">
       <div className="display text-gold text-7xl leading-none md:text-8xl">{chapter.num}</div>
       <h3 className="display mt-2 text-3xl md:text-4xl">{chapter.title}</h3>
       <p className="mt-3 text-base leading-relaxed text-muted">{chapter.body}</p>
@@ -55,7 +65,7 @@ export function WatchChapter() {
         </div>
 
         {WATCH_CHAPTERS.map((c) => (
-          <ChapterBlock key={c.num} chapter={c} progress={progress} />
+          <ChapterBlock key={c.num} chapter={c} progress={progress} reduced={reduced} />
         ))}
       </div>
     </section>

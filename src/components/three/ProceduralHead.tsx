@@ -14,7 +14,7 @@ interface Props {
 export function ProceduralHead({ progress, pointer }: Props) {
   const group = useRef<Group>(null);
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     const g = group.current;
     if (!g) return;
     const p = progress.get();
@@ -23,7 +23,7 @@ export function ProceduralHead({ progress, pointer }: Props) {
     const k = 1 - Math.pow(0.001, delta);
     g.rotation.y += (targetY - g.rotation.y) * k;
     g.rotation.x += (targetX - g.rotation.x) * k;
-    const t = performance.now() / 1000;
+    const t = state.clock.elapsedTime;
     g.position.y = Math.sin(t) * 0.04;
     const breathe = 1 + Math.sin(t * 0.8) * 0.012;
     g.scale.setScalar(breathe);

@@ -28,7 +28,7 @@ export function Hero() {
       <div className="sticky top-0 h-screen overflow-hidden">
         {/* Headline layered behind the canvas */}
         <motion.h1
-          style={{ scale: headlineScale, opacity: headlineOpacity }}
+          style={reduced ? undefined : { scale: headlineScale, opacity: headlineOpacity }}
           className="pointer-events-none absolute inset-0 z-0 flex flex-col items-center justify-center text-center"
         >
           <span className="display text-fg/90 text-[18vw] leading-none">Know Your</span>
@@ -55,7 +55,7 @@ export function Hero() {
 
         {/* Left HUD — modules */}
         <motion.aside
-          style={{ x: leftX, opacity: hudOpacity }}
+          style={reduced ? undefined : { x: leftX, opacity: hudOpacity }}
           className="absolute left-5 top-1/2 z-20 hidden -translate-y-1/2 md:block md:left-10"
         >
           <div className="glass rounded-xl2 p-4 w-56">
@@ -83,7 +83,7 @@ export function Hero() {
 
         {/* Right HUD — market value + stat bars */}
         <motion.aside
-          style={{ x: rightX, opacity: hudOpacity }}
+          style={reduced ? undefined : { x: rightX, opacity: hudOpacity }}
           className="absolute right-5 top-1/2 z-20 hidden -translate-y-1/2 md:block md:right-10"
         >
           <div className="glass rounded-xl2 p-5 w-64">

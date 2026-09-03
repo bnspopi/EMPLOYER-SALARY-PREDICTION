@@ -24,6 +24,7 @@ export function Nav() {
   const hydrated = useApp((s) => s.hydrated);
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [prevPath, setPrevPath] = useState(pathname);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -31,7 +32,12 @@ export function Nav() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
-  useEffect(() => setOpen(false), [pathname]);
+  // Close the mobile menu on navigation by adjusting state during render
+  // (React-recommended pattern; avoids setState-in-effect cascading renders).
+  if (pathname !== prevPath) {
+    setPrevPath(pathname);
+    setOpen(false);
+  }
 
   const onLanding = pathname === "/";
   return (

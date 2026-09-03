@@ -132,7 +132,10 @@ function detectYears(text: string): number {
   }
 
   // Date ranges → career span (earliest start → latest end).
-  const rangeRe = /((?:19|20)\d{2})\s*(?:–|-|—|to|until)\s*((?:19|20)\d{2}|present|current|now|today)/gi;
+  // An optional leading month token is allowed on each side so "Jan 2020 — Mar 2022"
+  // and "January 2018 - December 2023" parse the same as bare year ranges.
+  const rangeRe =
+    /(?:[A-Za-z]{3,9}\.?\s+)?((?:19|20)\d{2})\s*(?:–|-|—|to|until)\s*(?:[A-Za-z]{3,9}\.?\s+)?((?:19|20)\d{2}|present|current|now|today)/gi;
   let minStart = Infinity;
   let maxEnd = -Infinity;
   for (const m of text.matchAll(rangeRe)) {
@@ -371,7 +374,9 @@ export function parseResume(text: string, opts: { displayName?: string } = {}): 
   const role = findRole(primary);
   const roleDef = findRoleDef(primary);
 
-  const years = detectYears(clean);
+  // Parse dates from the raw text, not the contact-stripped text: the phone stripper's
+  // char-class also eats hyphenated year ranges ("2015 - 2022"), zeroing career span.
+  const years = detectYears(rawText);
   const level = levelFromTitle(primary, years);
   const effectiveYears = years > 0 ? years : { entry: 1, mid: 3, senior: 6, lead: 11 }[level];
 

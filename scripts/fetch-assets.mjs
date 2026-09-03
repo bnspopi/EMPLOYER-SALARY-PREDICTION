@@ -14,7 +14,13 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const manifest = JSON.parse(fs.readFileSync(path.join(root, "scripts/assets.json"), "utf8"));
+let manifest;
+try {
+  manifest = JSON.parse(fs.readFileSync(path.join(root, "scripts/assets.json"), "utf8"));
+} catch (e) {
+  console.warn("assets: non-fatal: could not read manifest:", e.message);
+  process.exit(0);
+}
 const rawDir = path.join(root, ".assets-raw");
 const rawOnly = process.argv.includes("--raw");
 
