@@ -1,0 +1,17 @@
+{
+  "note": "Generated with Higgsfield AI (nano_banana_pro images, Tripo H3.1 image-to-3D). Raw sources are fetched by scripts/fetch-assets.mjs and by .github/workflows/fetch-assets.yml, which commits optimized copies into public/.",
+  "raw": {
+    "robot.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3CJevPIJBGXUHh1JBO6GG07pPwA/hf_20260903_091031_1b81aec1-5c38-45a6-82b6-32fbabe34386.png",
+    "watch.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3CJevPIJBGXUHh1JBO6GG07pPwA/hf_20260903_091031_0759a617-9214-4c19-ba60-d86d1a526c69.png",
+    "studio.png": "https://d8j0ntlcm91z4.cloudfront.net/user_3CJevPIJBGXUHh1JBO6GG07pPwA/hf_20260903_091031_c5b1c7df-7fb4-4912-8eb1-629ccdf6cfae.png",
+    "robot.glb": "https://d8j0ntlcm91z4.cloudfront.net/user_3CJevPIJBGXUHh1JBO6GG07pPwA/hf_20260903_091405_0b930bf0-0172-44b4-8823-85d24cd2265f.glb",
+    "watch.glb": "https://d8j0ntlcm91z4.cloudfront.net/user_3CJevPIJBGXUHh1JBO6GG07pPwA/hf_20260903_091407_c2445475-c563-4e04-98e5-d2e994d978e1.glb"
+  },
+  "outputs": {
+    "public/images/robot-face.jpg": { "from": "robot.png", "width": 1600, "quality": 82 },
+    "public/images/watch.jpg": { "from": "watch.png", "width": 1600, "quality": 82 },
+    "public/images/studio-backdrop.jpg": { "from": "studio.png", "width": 2400, "quality": 80 },
+    "public/models/robot-head.glb": { "from": "robot.glb", "textureSize": 1024, "simplifyRatio": 0.5 },
+    "public/models/watch.glb": { "from": "watch.glb", "textureSize": 1024, "simplifyRatio": 0.5 }
+  }
+}

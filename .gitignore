@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# generated asset sources (downloaded by scripts/fetch-assets.mjs)
+.assets-raw/

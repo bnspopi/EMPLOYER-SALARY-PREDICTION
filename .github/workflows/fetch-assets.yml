@@ -1,0 +1,49 @@
+name: fetch-assets
+
+# Pulls the Higgsfield-generated source images and 3D models listed in scripts/assets.json,
+# optimizes them (JPEG resize, glTF meshopt + WebP textures) and commits them into public/.
+on:
+  workflow_dispatch:
+  push:
+    branches: ["claude/**", "main"]
+    paths: ["scripts/assets.json", ".github/workflows/fetch-assets.yml"]
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Download raw sources
+        run: node scripts/fetch-assets.mjs --raw
+      - name: Install image tools
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq imagemagick webp
+      - name: Optimize images
+        run: |
+          mkdir -p public/images public/models
+          convert .assets-raw/robot.png  -resize 1600x1600 -strip -quality 82 public/images/robot-face.jpg
+          convert .assets-raw/watch.png  -resize 1600x1600 -strip -quality 82 public/images/watch.jpg
+          convert .assets-raw/studio.png -resize 2400x2400 -strip -quality 80 public/images/studio-backdrop.jpg
+          if [ -f .assets-raw/employee.png ]; then convert .assets-raw/employee.png -resize 2400x2400 -strip -quality 80 public/images/employee-backdrop.jpg; fi
+          cwebp -quiet -q 80 -resize 1600 0 .assets-raw/robot.png -o public/images/robot-face.webp
+          cwebp -quiet -q 78 -resize 2400 0 .assets-raw/studio.png -o public/images/studio-backdrop.webp
+          ls -la public/images
+      - name: Optimize 3D models (meshopt + WebP textures)
+        run: |
+          npx -y @gltf-transform/cli@4 optimize .assets-raw/robot.glb public/models/robot-head.glb --compress meshopt --texture-compress webp --texture-size 1024 --simplify-ratio 0.5 --simplify-error 0.001
+          npx -y @gltf-transform/cli@4 optimize .assets-raw/watch.glb  public/models/watch.glb      --compress meshopt --texture-compress webp --texture-size 1024 --simplify-ratio 0.5 --simplify-error 0.001
+          ls -la public/models
+      - name: Commit assets
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/images public/models
+          git commit -m "chore(assets): add optimized generated 3D models and hero images [skip ci]" || echo "nothing to commit"
+          git push
