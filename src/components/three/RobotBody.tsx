@@ -99,7 +99,7 @@ function IdleArm({ side }: { side: 1 | -1 }) {
  * The robot's body below the scanned head, built to match it: white ceramic
  * armour panels over a chrome skeleton with cyan seams. Chest, segmented
  * abdomen with waist pistons, pelvis and legs, plus a left arm that idles at its
- * side — the right shoulder is where <RobotArm /> reaches out from.
+ * side — the right shoulder carries a matching cap.
  */
 export function RobotBody({ pointer }: { pointer: React.MutableRefObject<PointerState> }) {
   const root = useRef<THREE.Group>(null);

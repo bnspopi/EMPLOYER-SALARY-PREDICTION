@@ -4,7 +4,6 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { ContactShadows } from "@react-three/drei";
 import type { MotionValue } from "framer-motion";
 import { RobotFull, ROBOT_GROUND } from "./RobotFull";
-import { RobotArm } from "./RobotArm";
 import { RobotBody } from "./RobotBody";
 import { ProceduralHead } from "./ProceduralHead";
 import { ModelErrorBoundary } from "./ErrorBoundary";
@@ -85,7 +84,6 @@ export default function HeroScene({ progress, dpr = 1.75 }: Props) {
           <StudioEnv />
         </ModelErrorBoundary>
       </Suspense>
-      <RobotArm click={click} />
       <ContactShadows position={[0, ROBOT_GROUND, 0]} opacity={0.6} scale={20} blur={2.8} far={7} color="#000000" />
     </Canvas>
   );
