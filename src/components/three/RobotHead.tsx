@@ -77,8 +77,11 @@ export function RobotHead({ progress, pointer, click }: Props) {
       }
     }
 
-    const targetY = lookX * 0.55 + p * 0.6;
-    const targetX = -lookY * 0.3;
+    // As the camera pushes in, ease the turn back toward frontal — a large yaw at
+    // full zoom swings the face out of frame and shows the back of the skull.
+    const zoomEase = 1 - p * 0.62;
+    const targetY = lookX * 0.55 * zoomEase + p * 0.16;
+    const targetX = -lookY * 0.3 * zoomEase;
     const k = 1 - Math.pow(0.0006, delta);
     g.rotation.y += (targetY - g.rotation.y) * k;
     g.rotation.x += (targetX - g.rotation.x) * k;

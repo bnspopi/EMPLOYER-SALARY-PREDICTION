@@ -5,6 +5,7 @@ import { ContactShadows } from "@react-three/drei";
 import type { MotionValue } from "framer-motion";
 import { RobotHead } from "./RobotHead";
 import { RobotArm } from "./RobotArm";
+import { RobotBody } from "./RobotBody";
 import { ProceduralHead } from "./ProceduralHead";
 import { ModelErrorBoundary } from "./ErrorBoundary";
 import { StudioEnv } from "./Env";
@@ -16,10 +17,15 @@ function CameraRig({ progress }: { progress: MotionValue<number> }) {
   useFrame((state, delta) => {
     const cam = state.camera;
     const p = progress.get();
-    const targetZ = 4.6 - p * 1.2; // 4.6 → 3.4
+    // Start wide on the whole figure, then push in to the face as the hero scrolls.
+    // Wide on the standing figure, then push in and rise to the face.
+    // Wide on the whole standing robot, then push in and rise to the face.
+    const targetZ = 12.5 - p * 7.6; // 12.5 → 4.9
+    const targetY = -2.9 + p * 2.9;
     const k = 1 - Math.pow(0.01, delta);
     cam.position.z += (targetZ - cam.position.z) * k;
-    cam.lookAt(0, 0, 0);
+    cam.position.y += (targetY - cam.position.y) * k;
+    cam.lookAt(0, -3.1 + p * 3.2, 0);
   });
   return null;
 }
@@ -37,7 +43,7 @@ export default function HeroScene({ progress, dpr = 1.75 }: Props) {
     <Canvas
       dpr={[1, dpr]}
       gl={{ antialias: true, powerPreference: "high-performance" }}
-      camera={{ position: [0, 0.1, 4.6], fov: 40 }}
+      camera={{ position: [0, -2.9, 12.5], fov: 40 }}
       // Always animate while mounted — LazyCanvas unmounts the whole canvas once
       // it is well past the viewport, so "demand" would only freeze the cursor
       // tracking while the hero is actually on screen.
@@ -51,8 +57,9 @@ export default function HeroScene({ progress, dpr = 1.75 }: Props) {
           <StudioEnv />
         </ModelErrorBoundary>
       </Suspense>
+      <RobotBody pointer={pointer} />
       <RobotArm click={click} />
-      <ContactShadows position={[0, -1.2, 0]} opacity={0.5} scale={7} blur={2.6} far={3} color="#000000" />
+      <ContactShadows position={[0, -7.65, 0]} opacity={0.6} scale={18} blur={2.8} far={7} color="#000000" />
     </Canvas>
   );
 }

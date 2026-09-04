@@ -34,6 +34,7 @@ jobs:
           convert .assets-raw/watch.png  -resize 1600x1600 -strip -quality 82 public/images/watch.jpg
           convert .assets-raw/studio.png -resize 2400x2400 -strip -quality 80 public/images/studio-backdrop.jpg
           if [ -f .assets-raw/employee.png ]; then convert .assets-raw/employee.png -resize 2400x2400 -strip -quality 80 public/images/employee-backdrop.jpg; fi
+          if [ -f .assets-raw/presenter.png ]; then convert .assets-raw/presenter.png -resize 2400x2400 -strip -quality 82 public/images/presenter-studio.jpg; fi
           cwebp -quiet -q 80 -resize 1600 0 .assets-raw/robot.png -o public/images/robot-face.webp
           cwebp -quiet -q 78 -resize 2400 0 .assets-raw/studio.png -o public/images/studio-backdrop.webp
           ls -la public/images

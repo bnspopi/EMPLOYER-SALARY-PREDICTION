@@ -1,13 +1,9 @@
 "use client";
-import dynamic from "next/dynamic";
 import { Button } from "@/components/ui";
 import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { Reveal } from "./Reveal";
-import { Poster } from "./Poster";
-import { LazyCanvas } from "./LazyCanvas";
+import { PresenterBackdrop } from "./PresenterBackdrop";
 import { PROOF_MODULES, MODULE_ICONS } from "./data";
-
-const PresenterScene = dynamic(() => import("@/components/three/PresenterScene"), { ssr: false });
 
 export function ProofOfWork() {
   const reduced = useReducedMotion();
@@ -15,9 +11,7 @@ export function ProofOfWork() {
     <section className="relative overflow-hidden border-y border-line py-24 md:py-32" aria-label="Proof of work">
       {/* Set: tungsten-lit studio with a presenter talking to a cinema camera. */}
       <div className="absolute inset-0 z-0">
-        <LazyCanvas reduced={reduced} poster={<Poster src="/images/studio-backdrop.webp" alt="" />}>
-          {() => <PresenterScene dpr={reduced ? 1 : 1.5} />}
-        </LazyCanvas>
+        <PresenterBackdrop reduced={reduced} />
         {/* Darker on the right so the cards stay readable, lighter on the left so
             the presenter and the camera rig show through. */}
         <div className="absolute inset-0 bg-gradient-to-r from-bg/40 via-bg/68 to-bg/88" />

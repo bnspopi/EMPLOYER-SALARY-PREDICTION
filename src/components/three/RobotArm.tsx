@@ -5,13 +5,14 @@ import * as THREE from "three";
 import type { ClickTarget } from "@/hooks/useClickTarget";
 
 /** Distance in front of the robot where the "screen" the robot taps sits. */
-const PLANE_Z = 1.55;
-/** Upper-arm and forearm lengths. */
-const L1 = 1.05;
-const L2 = 1.0;
-/** Where the hand parks when idle — tucked down and behind the shoulder. */
-const REST = new THREE.Vector3(-1.5, -1.15, -0.55);
-const SHOULDER = new THREE.Vector3(-1.28, -0.12, -0.28);
+const PLANE_Z = 1.9;
+/** Upper-arm and forearm lengths — long, as a reaching robot arm would be. */
+const L1 = 2.6;
+const L2 = 2.45;
+/** The arm grows out of the body's right shoulder cap (see <RobotBody />). */
+const SHOULDER = new THREE.Vector3(-1.39, -1.16, 0.12);
+/** Where the hand parks when idle — down at the robot's side. */
+const REST = new THREE.Vector3(-1.85, -4.1, 0.3);
 
 const REACH_IN = 0.3; // s — time to extend
 const HOLD = 0.16; // s — tap dwell
@@ -22,6 +23,112 @@ const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2
 
 const chrome = { color: "#c9ced6", metalness: 1, roughness: 0.28 };
 const joint = { color: "#7d848f", metalness: 1, roughness: 0.4 };
+
+
+const skin = { color: "#b9bfc8", metalness: 0.95, roughness: 0.34 };
+const knuckle = { color: "#6c737e", metalness: 1, roughness: 0.42 };
+
+interface FingerProps {
+  /** knuckle position on the palm, in palm space */
+  position: [number, number, number];
+  /** length scale — the middle finger is longest, the little finger shortest */
+  len: number;
+  /** 0 = straight, 1 = fully curled into the palm */
+  curl: number;
+  /** splay away from the middle axis */
+  splay?: number;
+  radius?: number;
+}
+
+/**
+ * One finger: three phalanges (proximal, middle, distal) hinged at the knuckle,
+ * PIP and DIP joints, each joint capped with a darker pivot so the articulation
+ * reads at a glance. Built along +Z.
+ */
+function Finger({ position, len, curl, splay = 0, radius = 0.026 }: FingerProps) {
+  const p1 = 0.115 * len;
+  const p2 = 0.075 * len;
+  const p3 = 0.055 * len;
+  return (
+    <group position={position} rotation={[curl * 1.35, splay, 0]}>
+      <mesh>
+        <sphereGeometry args={[radius * 1.28, 14, 14]} />
+        <meshStandardMaterial {...knuckle} />
+      </mesh>
+      <mesh position={[0, 0, p1 / 2]} rotation={[Math.PI / 2, 0, 0]}>
+        <capsuleGeometry args={[radius, p1 - radius, 5, 10]} />
+        <meshStandardMaterial {...skin} />
+      </mesh>
+      {/* PIP */}
+      <group position={[0, 0, p1]} rotation={[curl * 1.5, 0, 0]}>
+        <mesh>
+          <sphereGeometry args={[radius * 1.1, 12, 12]} />
+          <meshStandardMaterial {...knuckle} />
+        </mesh>
+        <mesh position={[0, 0, p2 / 2]} rotation={[Math.PI / 2, 0, 0]}>
+          <capsuleGeometry args={[radius * 0.9, p2 - radius, 5, 10]} />
+          <meshStandardMaterial {...skin} />
+        </mesh>
+        {/* DIP + fingertip */}
+        <group position={[0, 0, p2]} rotation={[curl * 1.2, 0, 0]}>
+          <mesh>
+            <sphereGeometry args={[radius * 0.95, 12, 12]} />
+            <meshStandardMaterial {...knuckle} />
+          </mesh>
+          <mesh position={[0, 0, p3 / 2]} rotation={[Math.PI / 2, 0, 0]}>
+            <capsuleGeometry args={[radius * 0.8, p3 - radius * 0.8, 5, 10]} />
+            <meshStandardMaterial {...skin} />
+          </mesh>
+        </group>
+      </group>
+    </group>
+  );
+}
+
+/**
+ * An articulated hand: wrist, tapered palm with a visible knuckle ridge, four
+ * three-jointed fingers and an opposed two-jointed thumb. The index points
+ * forward to press; the remaining fingers curl into the palm the way a hand
+ * actually does when you tap something.
+ */
+function Hand({ tipRef }: { tipRef: React.RefObject<THREE.MeshStandardMaterial | null> }) {
+  return (
+    <group position={[0, 0, L2]} scale={1.5}>
+      {/* wrist pivot */}
+      <mesh>
+        <sphereGeometry args={[0.062, 18, 18]} />
+        <meshStandardMaterial {...knuckle} />
+      </mesh>
+      {/* palm — tapered, thinner than it is wide, like the back of a hand */}
+      <mesh position={[0, 0, 0.075]} scale={[1, 0.46, 1]}>
+        <sphereGeometry args={[0.088, 22, 18]} />
+        <meshStandardMaterial {...skin} roughness={0.4} />
+      </mesh>
+      {/* knuckle ridge across the top of the palm */}
+      <mesh position={[0, 0.018, 0.13]} rotation={[Math.PI / 2, 0, 0]} scale={[1, 1, 0.42]}>
+        <cylinderGeometry args={[0.052, 0.052, 0.13, 16]} />
+        <meshStandardMaterial {...skin} roughness={0.45} />
+      </mesh>
+
+      {/* index — extended to press */}
+      <Finger position={[-0.048, 0.006, 0.15]} len={1.06} curl={0.04} splay={-0.06} />
+      {/* middle, ring, little — curled into the palm */}
+      <Finger position={[-0.014, 0.012, 0.152]} len={1.12} curl={0.82} splay={-0.015} />
+      <Finger position={[0.019, 0.008, 0.148]} len={1.0} curl={0.9} splay={0.03} radius={0.024} />
+      <Finger position={[0.05, 0, 0.138]} len={0.84} curl={0.96} splay={0.08} radius={0.021} />
+      {/* thumb — opposed, across the palm */}
+      <group rotation={[0.25, 0.95, 0]}>
+        <Finger position={[-0.07, -0.022, 0.055]} len={0.86} curl={0.34} radius={0.028} />
+      </group>
+
+      {/* the press point glows at the index fingertip */}
+      <mesh position={[-0.052, 0.02, 0.4]}>
+        <sphereGeometry args={[0.03, 16, 16]} />
+        <meshStandardMaterial ref={tipRef} color="#4ad9ff" emissive="#4ad9ff" emissiveIntensity={2} toneMapped={false} />
+      </mesh>
+    </group>
+  );
+}
 
 /**
  * A chrome robot arm that reaches out of the scene and taps whatever the visitor
@@ -120,48 +227,28 @@ export function RobotArm({ click }: { click: React.MutableRefObject<ClickTarget>
       <group ref={shoulder} position={SHOULDER.toArray()}>
         {/* shoulder ball */}
         <mesh>
-          <sphereGeometry args={[0.19, 24, 24]} />
+          <sphereGeometry args={[0.27, 24, 24]} />
           <meshStandardMaterial {...joint} />
         </mesh>
         <group ref={upper}>
           {/* upper arm along +Z */}
           <mesh position={[0, 0, L1 / 2]} rotation={[Math.PI / 2, 0, 0]}>
-            <capsuleGeometry args={[0.1, L1 - 0.2, 8, 16]} />
+            <capsuleGeometry args={[0.15, L1 - 0.34, 8, 16]} />
             <meshStandardMaterial {...chrome} />
           </mesh>
           <group ref={fore} position={[0, 0, L1]}>
             {/* elbow */}
             <mesh>
-              <sphereGeometry args={[0.13, 20, 20]} />
+              <sphereGeometry args={[0.19, 20, 20]} />
               <meshStandardMaterial {...joint} />
             </mesh>
             {/* forearm along +Z */}
             <mesh position={[0, 0, L2 / 2]} rotation={[Math.PI / 2, 0, 0]}>
-              <capsuleGeometry args={[0.085, L2 - 0.24, 8, 16]} />
+              <capsuleGeometry args={[0.13, L2 - 0.36, 8, 16]} />
               <meshStandardMaterial {...chrome} />
             </mesh>
-            {/* hand: palm + a pointing index finger + folded fingers */}
-            <group position={[0, 0, L2]}>
-              <mesh rotation={[Math.PI / 2, 0, 0]}>
-                <boxGeometry args={[0.17, 0.12, 0.2]} />
-                <meshStandardMaterial {...chrome} roughness={0.35} />
-              </mesh>
-              <mesh position={[0, 0, 0.15]} rotation={[Math.PI / 2, 0, 0]}>
-                <capsuleGeometry args={[0.032, 0.16, 6, 12]} />
-                <meshStandardMaterial {...chrome} roughness={0.3} />
-              </mesh>
-              {/* glowing fingertip */}
-              <mesh position={[0, 0, 0.26]}>
-                <sphereGeometry args={[0.042, 16, 16]} />
-                <meshStandardMaterial ref={tip} color="#4ad9ff" emissive="#4ad9ff" emissiveIntensity={2} toneMapped={false} />
-              </mesh>
-              {[-0.055, 0.055].map((x) => (
-                <mesh key={x} position={[x, -0.075, 0.06]} rotation={[Math.PI / 2, 0, 0]}>
-                  <capsuleGeometry args={[0.022, 0.08, 4, 8]} />
-                  <meshStandardMaterial {...joint} />
-                </mesh>
-              ))}
-            </group>
+            {/* hand */}
+            <Hand tipRef={tip} />
           </group>
         </group>
       </group>
