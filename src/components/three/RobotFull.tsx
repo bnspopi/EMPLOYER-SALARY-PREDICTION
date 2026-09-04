@@ -23,9 +23,15 @@ const HIP = ROBOT_HEIGHT * 0.52;
 
 /** The plane just in front of the chest that the robot taps. */
 const TAP_PLANE_Z = 1.35;
-const REACH_IN = 0.34; // s — time to extend
-const HOLD = 0.18; // s — tap dwell
-const REACH_OUT = 0.6; // s — retract
+/**
+ * The gesture is a slow point, not a tap. The robot is directing your attention
+ * to what you clicked, so it extends deliberately, holds long enough for the
+ * pose to read as "look here", and eases back unhurried.
+ */
+const REACH_IN = 0.7; // s — deliberate extend
+const HOLD = 1.2; // s — hold the point
+const REACH_OUT = 0.95; // s — unhurried return
+const GESTURE = REACH_IN + HOLD + REACH_OUT;
 
 const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
 const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
@@ -225,9 +231,11 @@ export function RobotFull({ progress, pointer, click }: Props) {
     }
     const c = click?.current;
     if (c && c.at > 0) {
+      // Keep looking at what it is pointing at for as long as it points —
+      // easing in as the arm lifts and out as it lowers.
       const since = (performance.now() - c.at) / 1000;
-      if (since < 1.1) {
-        const w = Math.min(1, (1.1 - since) / 0.5);
+      if (since < GESTURE) {
+        const w = Math.min(1, since / 0.45, (GESTURE - since) / 0.7);
         lookX = lookX * (1 - w) + c.x * w;
         lookY = lookY * (1 - w) + -c.y * w;
       }
@@ -276,7 +284,9 @@ export function RobotFull({ progress, pointer, click }: Props) {
         s.reach = easeOutCubic(e / REACH_IN);
       } else if (e < REACH_IN + HOLD) {
         s.reach = 1;
-        poke = Math.sin(((e - REACH_IN) / HOLD) * Math.PI) * 0.18;
+        // A held gesture drifts rather than freezing, but never jabs: this is
+        // directing attention, not pressing a button.
+        poke = Math.sin((e - REACH_IN) * 1.5) * 0.05;
       } else if (e < REACH_IN + HOLD + REACH_OUT) {
         s.reach = 1 - easeInOutCubic((e - REACH_IN - HOLD) / REACH_OUT);
       } else {
@@ -285,7 +295,8 @@ export function RobotFull({ progress, pointer, click }: Props) {
       }
     }
 
-    const ik = 1 - Math.pow(0.0001, delta);
+    // Soft convergence (~0.15 s) so the limb glides rather than snapping.
+    const ik = 1 - Math.pow(0.001, delta);
     const joints: [React.RefObject<THREE.Group | null>, React.RefObject<THREE.Group | null>][] = [
       [shoulderL, elbowL],
       [shoulderR, elbowR],
@@ -305,10 +316,12 @@ export function RobotFull({ progress, pointer, click }: Props) {
 
     if (ring.current) {
       ring.current.position.copy(v.hit);
-      const vis = s.reach > 0.55 ? (s.reach - 0.55) / 0.45 : 0;
+      // Fades up with the reach and pulses slowly while held, rather than
+      // flashing once on contact.
+      const vis = THREE.MathUtils.clamp((s.reach - 0.3) / 0.45, 0, 1);
       ring.current.visible = vis > 0.01;
-      ring.current.scale.setScalar(0.6 + (1 - vis) * 0.9);
-      (ring.current.material as THREE.MeshBasicMaterial).opacity = vis * 0.75;
+      ring.current.scale.setScalar((0.78 + Math.sin(t * 2.1) * 0.09) * (1 + (1 - vis) * 0.5));
+      (ring.current.material as THREE.MeshBasicMaterial).opacity = vis * 0.7;
     }
   });
 
