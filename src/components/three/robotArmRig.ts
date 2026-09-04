@@ -35,6 +35,11 @@ const BOUNDARY: [number, number][] = [
   [-0.20, -0.122],
 ];
 
+/** Band to search for the neck: above the shoulders, below the head. */
+const NECK_LO = 0.32;
+const NECK_HI = 0.46;
+const NECK_SLABS = 28;
+
 /** Vertical extent of the arms: shoulder down to fingertips. */
 const ARM_TOP = 0.30;
 const ARM_BOTTOM = -0.175;
@@ -89,8 +94,14 @@ export interface ArmSegments {
 }
 
 export interface RobotRig {
-  /** Everything that is not a posable arm. */
+  /** Everything that is not a posable arm or the head. */
   body: THREE.BufferGeometry;
+  /** Head and neck, translated so the neck pivot sits at the origin. */
+  head: THREE.BufferGeometry;
+  /** Where the head pivots, in model space. */
+  neck: THREE.Vector3;
+  /** Radius of the collar that seals the neck cut. */
+  neckR: number;
   /** Index 0 is the arm on screen-left (negative x), index 1 the one on screen-right. */
   arms: [ArmSegments, ArmSegments];
   shoulderR: number;
@@ -143,6 +154,7 @@ export function buildRobotRig(geometry: THREE.BufferGeometry): RobotRig {
   const vi = (t: number, c: number) => (index ? index.getX(t * 3 + c) : t * 3 + c);
 
   const body = bucket();
+  const head = bucket();
   // [screen-left, screen-right] × [upper, fore, hand]
   const seg: Bucket[][] = [
     [bucket(), bucket(), bucket()],
@@ -151,6 +163,47 @@ export function buildRobotRig(geometry: THREE.BufferGeometry): RobotRig {
 
   const p = new THREE.Vector3();
   const cen = new THREE.Vector3();
+
+  // Find the neck by measuring the figure rather than assuming a height: scan
+  // the band between the shoulders and the head and take the narrowest slab.
+  // Cutting anywhere else either decapitates the shoulders or leaves the head
+  // welded to the chest.
+  const slabs = Array.from({ length: NECK_SLABS }, () => ({
+    minX: Infinity,
+    maxX: -Infinity,
+    sumX: 0,
+    sumZ: 0,
+    n: 0,
+  }));
+  const step = (NECK_HI - NECK_LO) / NECK_SLABS;
+  for (let i = 0; i < position.count; i++) {
+    p.fromBufferAttribute(position, i);
+    const uy = (p.y - centre.y) / h;
+    if (uy < NECK_LO || uy >= NECK_HI) continue;
+    const slab = slabs[Math.min(NECK_SLABS - 1, Math.floor((uy - NECK_LO) / step))];
+    slab.minX = Math.min(slab.minX, p.x);
+    slab.maxX = Math.max(slab.maxX, p.x);
+    slab.sumX += p.x;
+    slab.sumZ += p.z;
+    slab.n++;
+  }
+  let neckIdx = 0;
+  let neckWidth = Infinity;
+  slabs.forEach((slab, i) => {
+    if (slab.n < 6) return;
+    const w = slab.maxX - slab.minX;
+    if (w < neckWidth) {
+      neckWidth = w;
+      neckIdx = i;
+    }
+  });
+  const neckSlab = slabs[neckIdx];
+  const neckU = NECK_LO + (neckIdx + 0.5) * step;
+  const neck = new THREE.Vector3(
+    neckSlab.n ? neckSlab.sumX / neckSlab.n : centre.x,
+    centre.y + neckU * h,
+    neckSlab.n ? neckSlab.sumZ / neckSlab.n : centre.z,
+  );
 
   for (let t = 0; t < triCount; t++) {
     const a = vi(t, 0);
@@ -165,7 +218,7 @@ export function buildRobotRig(geometry: THREE.BufferGeometry): RobotRig {
     const ux = (cen.x - centre.x) / h;
     const uy = (cen.y - centre.y) / h;
 
-    let target = body;
+    let target = uy > neckU ? head : body;
     if (uy > ARM_BOTTOM && uy < ARM_TOP) {
       const edge = boundaryAt(uy);
       const side = ux < edge ? 0 : ux > -edge ? 1 : -1;
@@ -206,6 +259,10 @@ export function buildRobotRig(geometry: THREE.BufferGeometry): RobotRig {
 
   return {
     body: build(body),
+    head: build(head, neck),
+    neck,
+    // Just proud of the neck, so the collar seals the cut from both sides.
+    neckR: (Number.isFinite(neckWidth) ? neckWidth / 2 : h * 0.03) * 1.06,
     arms: [makeArm(0), makeArm(1)],
     shoulderR: SHOULDER_R * h,
     socketR: SOCKET_R * h,

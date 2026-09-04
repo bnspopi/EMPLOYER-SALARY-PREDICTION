@@ -234,6 +234,7 @@ interface Props {
 export function RobotFull({ progress, pointer, click, onReady }: Props) {
   const { scene } = useGLTF(MODEL, false);
   const group = useRef<THREE.Group>(null);
+  const head = useRef<THREE.Group>(null);
   // One pair of joints per arm: index 0 is the arm on screen-left.
   const shoulderL = useRef<THREE.Group>(null);
   const elbowL = useRef<THREE.Group>(null);
@@ -299,8 +300,14 @@ export function RobotFull({ progress, pointer, click, onReady }: Props) {
     // fire a ray at the face from in front and plant each eye on the surface it
     // actually hits. Eye line sits at ~92.5% of standing height, the usual
     // humanoid proportion, and the pupils a little inboard.
-    const probe = new THREE.Mesh(rig.body);
-    const pbox = new THREE.Box3().setFromObject(probe);
+    // Measure the whole figure for proportion, but cast at the head — it is its
+    // own object now, and the eyes ride with it.
+    const whole = new THREE.Box3().setFromObject(new THREE.Mesh(rig.body));
+    const probe = new THREE.Mesh(rig.head);
+    probe.position.copy(rig.neck);
+    probe.updateMatrixWorld(true);
+    const headBox = new THREE.Box3().setFromObject(probe);
+    const pbox = whole.union(headBox);
     const ph = pbox.max.y - pbox.min.y;
     const cx = (pbox.min.x + pbox.max.x) / 2;
     const ray = new THREE.Raycaster();
@@ -315,8 +322,13 @@ export function RobotFull({ progress, pointer, click, onReady }: Props) {
       const q = new THREE.Quaternion().setFromUnitVectors(FORWARD, n);
       // Sit the centre a hair proud; the head's curvature sinks the rim in.
       const out = ph * 0.0012;
+      // Head-local, so the eyes travel with the head when it turns.
       found.push({
-        position: [hit.point.x + n.x * out, hit.point.y + n.y * out, hit.point.z + n.z * out],
+        position: [
+          hit.point.x + n.x * out - rig.neck.x,
+          hit.point.y + n.y * out - rig.neck.y,
+          hit.point.z + n.z * out - rig.neck.z,
+        ],
         quaternion: [q.x, q.y, q.z, q.w],
       });
     }
@@ -399,16 +411,16 @@ export function RobotFull({ progress, pointer, click, onReady }: Props) {
       lookY *= 1 - greetAmt;
     }
 
-    // Yaw is free: the head sits on the axis of rotation, so turning the body
-    // barely translates the face and it stays framed at any zoom. Pitch swings
-    // the head through an arc even about the hip, so it stays small — and both
-    // ease off as the camera closes in, or a big turn shows the back of the head.
-    const zoomEase = 1 - p * 0.55;
-    const targetY = lookX * 0.5 * zoomEase;
-    const targetX = -lookY * 0.05 * zoomEase;
+    // The head alone follows the cursor — the body just stands there. Eased back
+    // toward frontal as the camera closes in, or a big turn at full zoom fills
+    // the frame with the side of the skull.
+    const zoomEase = 1 - p * 0.4;
     const k = 1 - Math.pow(0.0009, delta);
-    g.rotation.y += (targetY - g.rotation.y) * k;
-    g.rotation.x += (targetX - g.rotation.x) * k;
+    const hd = head.current;
+    if (hd) {
+      hd.rotation.y += (lookX * 0.62 * zoomEase - hd.rotation.y) * k;
+      hd.rotation.x += (-lookY * 0.26 * zoomEase - hd.rotation.x) * k;
+    }
 
     // Idle life: breathing, and a slow weight shift from one foot to the other.
     g.position.y = ROBOT_GROUND + HIP + Math.sin(t * 1.1) * 0.035;
@@ -526,7 +538,16 @@ export function RobotFull({ progress, pointer, click, onReady }: Props) {
       <Arm arm={rig.arms[0]} rig={rig} material={material} shoulderRef={shoulderL} elbowRef={elbowL} wristRef={wristL} />
       <Arm arm={rig.arms[1]} rig={rig} material={material} shoulderRef={shoulderR} elbowRef={elbowR} wristRef={wristRt} />
 
-      {eyes.map((e, i) => (
+      {/* Collar over the neck cut. A sphere is rotation-invariant, so it seals
+          both sides of the joint however far the head turns. */}
+      <mesh position={rig.neck}>
+        <sphereGeometry args={[rig.neckR, 24, 20]} />
+        <meshStandardMaterial {...jointMat} />
+      </mesh>
+
+      <group ref={head} position={rig.neck}>
+        <mesh geometry={rig.head} material={material} castShadow />
+        {eyes.map((e, i) => (
         <Eye
           key={e.position.join(",")}
           position={e.position}
@@ -535,15 +556,16 @@ export function RobotFull({ progress, pointer, click, onReady }: Props) {
           irisRef={i === 0 ? irisA : irisB}
         />
       ))}
-      {eyes.length > 0 ? (
-        <pointLight
-          position={[0, eyes[0].position[1], eyes[0].position[2] + 0.3]}
-          color="#4ad9ff"
-          intensity={1.4}
-          distance={2.6}
-          decay={2}
-        />
-      ) : null}
+        {eyes.length > 0 ? (
+          <pointLight
+            position={[0, eyes[0].position[1], eyes[0].position[2] + 0.3]}
+            color="#4ad9ff"
+            intensity={1.4}
+            distance={2.6}
+            decay={2}
+          />
+        ) : null}
+      </group>
 
       {/* Tap ripple at the touch point. */}
       <mesh ref={ring} visible={false}>
