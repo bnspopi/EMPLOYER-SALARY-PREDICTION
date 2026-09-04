@@ -5,6 +5,7 @@ import * as THREE from "three";
 import type { MotionValue } from "framer-motion";
 import { WatchModel } from "./WatchModel";
 import { ProceduralWatch } from "./ProceduralWatch";
+import { WatchMovement } from "./WatchMovement";
 import { ModelErrorBoundary } from "./ErrorBoundary";
 import { GoldEnv } from "./Env";
 
@@ -105,13 +106,13 @@ interface Props {
   dpr?: number;
 }
 
-export default function WatchScene({ progress, active, dpr = 1.75 }: Props) {
+export default function WatchScene({ progress, dpr = 1.75 }: Props) {
   return (
     <Canvas
       dpr={[1, dpr]}
       gl={{ antialias: true, powerPreference: "high-performance" }}
       camera={{ position: [0.8, 0.6, 4.2], fov: 42 }}
-      frameloop={active ? "always" : "demand"}
+      frameloop="always"
     >
       <color attach="background" args={["#060708"]} />
       <ambientLight intensity={0.2} />
@@ -122,6 +123,8 @@ export default function WatchScene({ progress, active, dpr = 1.75 }: Props) {
       <Suspense fallback={<ProceduralWatch />}>
         <ModelErrorBoundary fallback={<ProceduralWatch />}>
           <WatchModel />
+          {/* The case is a static mesh, so the running movement is layered on the dial. */}
+          <WatchMovement />
           <GoldEnv />
         </ModelErrorBoundary>
       </Suspense>

@@ -4,11 +4,13 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { ContactShadows } from "@react-three/drei";
 import type { MotionValue } from "framer-motion";
 import { RobotHead } from "./RobotHead";
+import { RobotArm } from "./RobotArm";
 import { ProceduralHead } from "./ProceduralHead";
 import { ModelErrorBoundary } from "./ErrorBoundary";
 import { StudioEnv } from "./Env";
 import { SceneLights } from "./Lights";
 import { usePointer } from "@/hooks/usePointer";
+import { useClickTarget } from "@/hooks/useClickTarget";
 
 function CameraRig({ progress }: { progress: MotionValue<number> }) {
   useFrame((state, delta) => {
@@ -28,23 +30,28 @@ interface Props {
   dpr?: number;
 }
 
-export default function HeroScene({ progress, active, dpr = 1.75 }: Props) {
+export default function HeroScene({ progress, dpr = 1.75 }: Props) {
   const pointer = usePointer();
+  const click = useClickTarget();
   return (
     <Canvas
       dpr={[1, dpr]}
       gl={{ antialias: true, powerPreference: "high-performance" }}
       camera={{ position: [0, 0.1, 4.6], fov: 40 }}
-      frameloop={active ? "always" : "demand"}
+      // Always animate while mounted — LazyCanvas unmounts the whole canvas once
+      // it is well past the viewport, so "demand" would only freeze the cursor
+      // tracking while the hero is actually on screen.
+      frameloop="always"
     >
       <CameraRig progress={progress} />
       <SceneLights />
-      <Suspense fallback={<ProceduralHead progress={progress} pointer={pointer} />}>
-        <ModelErrorBoundary fallback={<ProceduralHead progress={progress} pointer={pointer} />}>
-          <RobotHead progress={progress} pointer={pointer} />
+      <Suspense fallback={<ProceduralHead progress={progress} pointer={pointer} click={click} />}>
+        <ModelErrorBoundary fallback={<ProceduralHead progress={progress} pointer={pointer} click={click} />}>
+          <RobotHead progress={progress} pointer={pointer} click={click} />
           <StudioEnv />
         </ModelErrorBoundary>
       </Suspense>
+      <RobotArm click={click} />
       <ContactShadows position={[0, -1.2, 0]} opacity={0.5} scale={7} blur={2.6} far={3} color="#000000" />
     </Canvas>
   );

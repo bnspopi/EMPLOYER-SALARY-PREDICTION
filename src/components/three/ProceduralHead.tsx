@@ -4,29 +4,46 @@ import { useFrame } from "@react-three/fiber";
 import type { MotionValue } from "framer-motion";
 import type { Group } from "three";
 import type { PointerState } from "@/hooks/usePointer";
+import type { ClickTarget } from "@/hooks/useClickTarget";
 
 interface Props {
   progress: MotionValue<number>;
   pointer: React.MutableRefObject<PointerState>;
+  click?: React.MutableRefObject<ClickTarget>;
 }
 
 /** Stylized chrome head built from primitives — the fallback when the GLB fails. */
-export function ProceduralHead({ progress, pointer }: Props) {
+export function ProceduralHead({ progress, pointer, click }: Props) {
   const group = useRef<Group>(null);
 
   useFrame((state, delta) => {
     const g = group.current;
     if (!g) return;
+    const t = state.clock.elapsedTime;
     const p = progress.get();
-    const targetY = pointer.current.x * 0.45 + p * 0.6;
-    const targetX = -pointer.current.y * 0.25;
-    const k = 1 - Math.pow(0.001, delta);
+    const ptr = pointer.current;
+    let lookX = ptr.x;
+    let lookY = ptr.y;
+    if (!ptr.moved) {
+      lookX = Math.sin(t * 0.35) * 0.6;
+      lookY = Math.sin(t * 0.27) * 0.3;
+    }
+    const c = click?.current;
+    if (c && c.at > 0) {
+      const since = (performance.now() - c.at) / 1000;
+      if (since < 1.1) {
+        const w = Math.min(1, (1.1 - since) / 0.5);
+        lookX = lookX * (1 - w) + c.x * w;
+        lookY = lookY * (1 - w) + -c.y * w;
+      }
+    }
+    const targetY = lookX * 0.55 + p * 0.6;
+    const targetX = -lookY * 0.3;
+    const k = 1 - Math.pow(0.0006, delta);
     g.rotation.y += (targetY - g.rotation.y) * k;
     g.rotation.x += (targetX - g.rotation.x) * k;
-    const t = state.clock.elapsedTime;
     g.position.y = Math.sin(t) * 0.04;
-    const breathe = 1 + Math.sin(t * 0.8) * 0.012;
-    g.scale.setScalar(breathe);
+    g.scale.setScalar(1 + Math.sin(t * 0.8) * 0.012);
   });
 
   const chrome = { metalness: 1, roughness: 0.25, color: "#c9ced6" };

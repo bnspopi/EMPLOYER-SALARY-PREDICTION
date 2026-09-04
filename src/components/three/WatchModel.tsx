@@ -1,16 +1,18 @@
 "use client";
-import { useLayoutEffect, useMemo, useRef } from "react";
-import { useFrame } from "@react-three/fiber";
+import { useLayoutEffect, useMemo } from "react";
 import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 
 const MODEL = "/models/watch.glb";
 
-/** Watch GLB: dial faces +Y in the asset, so rotate x = +PI/2 to face the camera. */
+/**
+ * Watch GLB: the dial faces +Y in the asset, so rotate x = +PI/2 to face the camera.
+ * The case itself stays still — only <WatchMovement /> (the gear train and hands
+ * layered on the dial) animates, so the watch reads as running rather than tumbling.
+ */
 export function WatchModel() {
   const { scene } = useGLTF(MODEL, false);
   const model = useMemo(() => scene.clone(true), [scene]);
-  const spin = useRef<THREE.Group>(null);
 
   useLayoutEffect(() => {
     const box = new THREE.Box3().setFromObject(model);
@@ -23,15 +25,9 @@ export function WatchModel() {
     model.scale.setScalar(scale);
   }, [model]);
 
-  useFrame((_, delta) => {
-    if (spin.current) spin.current.rotation.z += delta * 0.08;
-  });
-
   return (
     <group rotation={[Math.PI / 2, 0, 0]}>
-      <group ref={spin}>
-        <primitive object={model} />
-      </group>
+      <primitive object={model} />
     </group>
   );
 }

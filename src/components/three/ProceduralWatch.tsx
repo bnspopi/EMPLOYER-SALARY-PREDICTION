@@ -11,16 +11,15 @@ const HALF_PI = Math.PI / 2;
 export function ProceduralWatch() {
   const hands = useRef<Group>(null);
   const gears = useRef<Group>(null);
-  const root = useRef<Group>(null);
 
   useFrame((_, delta) => {
+    // Only the movement turns — the case stays put so the macro push-in reads cleanly.
     if (hands.current) hands.current.rotation.z -= delta * 0.6;
     if (gears.current) gears.current.rotation.z += delta * 0.8;
-    if (root.current) root.current.rotation.y += delta * 0.12;
   });
 
   return (
-    <group ref={root}>
+    <group>
       {/* bezel */}
       <mesh>
         <torusGeometry args={[1.05, 0.14, 24, 64]} />

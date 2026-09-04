@@ -1,16 +1,29 @@
 "use client";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui";
+import { useReducedMotion } from "@/hooks/useReducedMotion";
 import { Reveal } from "./Reveal";
 import { Poster } from "./Poster";
+import { LazyCanvas } from "./LazyCanvas";
 import { PROOF_MODULES, MODULE_ICONS } from "./data";
 
+const PresenterScene = dynamic(() => import("@/components/three/PresenterScene"), { ssr: false });
+
 export function ProofOfWork() {
+  const reduced = useReducedMotion();
   return (
     <section className="relative overflow-hidden border-y border-line py-24 md:py-32" aria-label="Proof of work">
+      {/* Set: tungsten-lit studio with a presenter talking to a cinema camera. */}
       <div className="absolute inset-0 z-0">
-        <Poster src="/images/studio-backdrop.webp" alt="" />
-        <div className="absolute inset-0 bg-bg/70" />
+        <LazyCanvas reduced={reduced} poster={<Poster src="/images/studio-backdrop.webp" alt="" />}>
+          {() => <PresenterScene dpr={reduced ? 1 : 1.5} />}
+        </LazyCanvas>
+        {/* Darker on the right so the cards stay readable, lighter on the left so
+            the presenter and the camera rig show through. */}
+        <div className="absolute inset-0 bg-gradient-to-r from-bg/40 via-bg/68 to-bg/88" />
+        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-bg to-transparent" />
       </div>
+
       <div className="relative z-10 mx-auto max-w-[1400px] px-5 md:px-10">
         <Reveal>
           <div className="eyebrow text-gold">Everything inside</div>
