@@ -55,5 +55,24 @@ for (const r of ROUTES) {
   await pg.close();
 }
 
-console.log(JSON.stringify({ total: ROUTES.length + 1, failed }));
+// Regression guard: the hero holds a link click back so the robot can press it
+// first, which means every in-app link on the landing page goes through an
+// interceptor. If that ever stops calling router.push, nothing navigates at all
+// and no route check would notice, since those use goto rather than clicking.
+{
+  const LINKS = [['Salary Guides', '/salaries'], ['Recruiters', '/for-recruiters'], ['Pricing', '/pricing']];
+  for (const [name, expect] of LINKS) {
+    const pg = await b.newPage({ viewport: { width: 1200, height: 760 } });
+    await pg.goto('http://127.0.0.1:3111/', { waitUntil: 'networkidle', timeout: 60000 });
+    await pg.waitForTimeout(5000);
+    await pg.getByRole('link', { name: new RegExp(`^${name}$`, 'i') }).first().click({ noWaitAfter: true });
+    let ok = false;
+    try { await pg.waitForURL(u => u.pathname === expect, { timeout: 9000 }); ok = true; } catch {}
+    if (!ok) failed++;
+    console.log(`${ok ? 'PASS' : 'FAIL'} escorted link ${name} -> ${expect} (${pg.url()})`);
+    await pg.close();
+  }
+}
+
+console.log(JSON.stringify({ total: ROUTES.length + 4, failed }));
 await b.close();

@@ -8,6 +8,7 @@ import type { MotionValue } from "framer-motion";
 import type { PointerState } from "@/hooks/usePointer";
 import type { ClickTarget } from "@/hooks/useClickTarget";
 import { buildRobotRig, solveArmIK, type ArmSegments } from "./robotArmRig";
+import { GESTURE, HOLD, REACH_IN, REACH_OUT, RIPPLE } from "@/lib/gesture";
 
 const MODEL = "/models/robot-full.glb";
 
@@ -23,16 +24,6 @@ const HIP = ROBOT_HEIGHT * 0.52;
 
 /** The plane just in front of the chest that the robot taps. */
 const TAP_PLANE_Z = 1.35;
-/**
- * The gesture is a slow point, not a tap. The robot is directing your attention
- * to what you clicked, so it extends deliberately, holds long enough for the
- * pose to read as "look here", and eases back unhurried.
- */
-const REACH_IN = 0.7; // s — deliberate extend
-const HOLD = 1.2; // s — hold the point
-const REACH_OUT = 0.95; // s — unhurried return
-const GESTURE = REACH_IN + HOLD + REACH_OUT;
-
 const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
 const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
@@ -72,12 +63,14 @@ function Arm({
   material,
   shoulderRef,
   elbowRef,
+  wristRef,
 }: {
   arm: ArmSegments;
   rig: ReturnType<typeof buildRobotRig>;
   material: THREE.Material;
   shoulderRef: React.RefObject<THREE.Group | null>;
   elbowRef: React.RefObject<THREE.Group | null>;
+  wristRef: React.RefObject<THREE.Group | null>;
 }) {
   return (
     <>
@@ -99,7 +92,7 @@ function Arm({
             <sphereGeometry args={[rig.elbowR, 20, 20]} />
             <meshStandardMaterial {...jointMat} />
           </mesh>
-          <group position={arm.wristOffset}>
+          <group ref={wristRef} position={arm.wristOffset}>
             <mesh geometry={arm.hand} material={material} castShadow />
             <mesh>
               <sphereGeometry args={[rig.wristR, 18, 18]} />
@@ -135,6 +128,8 @@ export function RobotFull({ progress, pointer, click }: Props) {
   const elbowL = useRef<THREE.Group>(null);
   const shoulderR = useRef<THREE.Group>(null);
   const elbowR = useRef<THREE.Group>(null);
+  const wristL = useRef<THREE.Group>(null);
+  const wristRt = useRef<THREE.Group>(null);
   const ring = useRef<THREE.Mesh>(null);
 
   const { rig, material, eyes } = useMemo(() => {
@@ -315,13 +310,27 @@ export function RobotFull({ progress, pointer, click }: Props) {
     }
 
     if (ring.current) {
-      ring.current.position.copy(v.hit);
-      // Fades up with the reach and pulses slowly while held, rather than
-      // flashing once on contact.
-      const vis = THREE.MathUtils.clamp((s.reach - 0.3) / 0.45, 0, 1);
-      ring.current.visible = vis > 0.01;
-      ring.current.scale.setScalar((0.78 + Math.sin(t * 2.1) * 0.09) * (1 + (1 - vis) * 0.5));
-      (ring.current.material as THREE.MeshBasicMaterial).opacity = vis * 0.7;
+      // The ring is the press itself: it pops the instant the hand arrives, then
+      // expands and fades. A link click opens its section just after this lands,
+      // so the order reads reach → press → ripple → section.
+      const since = s.start >= 0 ? t - s.start - REACH_IN : -1;
+      const k = since >= 0 && since < RIPPLE ? since / RIPPLE : -1;
+      ring.current.visible = k >= 0;
+      if (k >= 0) {
+        // Pinned to the hand, not to the raw click: the arm's reach is clamped,
+        // so a far click leaves the two in different places otherwise.
+        const wrist = (s.side === 0 ? wristL : wristRt).current;
+        if (wrist) {
+          wrist.getWorldPosition(v.tmp);
+          g.worldToLocal(v.tmp);
+          ring.current.position.copy(v.tmp);
+        } else {
+          ring.current.position.copy(v.hit);
+        }
+        ring.current.lookAt(state.camera.position);
+        ring.current.scale.setScalar(0.45 + k * 1.15);
+        (ring.current.material as THREE.MeshBasicMaterial).opacity = (1 - k) * 0.9;
+      }
     }
   });
 
@@ -330,8 +339,8 @@ export function RobotFull({ progress, pointer, click }: Props) {
       <mesh geometry={rig.body} material={material} castShadow />
 
       {/* Both of the robot's own arms, cut from the same mesh and hung on IK joints. */}
-      <Arm arm={rig.arms[0]} rig={rig} material={material} shoulderRef={shoulderL} elbowRef={elbowL} />
-      <Arm arm={rig.arms[1]} rig={rig} material={material} shoulderRef={shoulderR} elbowRef={elbowR} />
+      <Arm arm={rig.arms[0]} rig={rig} material={material} shoulderRef={shoulderL} elbowRef={elbowL} wristRef={wristL} />
+      <Arm arm={rig.arms[1]} rig={rig} material={material} shoulderRef={shoulderR} elbowRef={elbowR} wristRef={wristRt} />
 
       {/* Flattened against the face so they read as inset lenses rather than
           headlamps bolted on the front. */}
@@ -347,7 +356,7 @@ export function RobotFull({ progress, pointer, click }: Props) {
 
       {/* Tap ripple at the touch point. */}
       <mesh ref={ring} visible={false}>
-        <ringGeometry args={[0.2, 0.25, 40]} />
+        <ringGeometry args={[0.34, 0.42, 44]} />
         <meshBasicMaterial color="#4ad9ff" transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} toneMapped={false} />
       </mesh>
     </group>
