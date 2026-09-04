@@ -28,5 +28,32 @@ for (const r of ROUTES) {
   console.log(`${ok ? 'PASS' : 'FAIL'} ${status} ${r}${errs.length ? '  :: ' + errs.slice(0,2).join(' | ') : ''}`);
   await pg.close();
 }
-console.log(JSON.stringify({ total: ROUTES.length, failed }));
+// Regression guard: the watch chapters are stacked in one spot and cross-faded
+// from scroll. A transform that stops tracking scroll leaves its chapter painted
+// over the live one as unreadable overlapping type — invisible to a route check,
+// so crawl the section with real wheel events and assert only one is ever shown.
+{
+  const pg = await b.newPage({ viewport: { width: 1440, height: 900 } });
+  await pg.goto('http://127.0.0.1:3111/', { waitUntil: 'networkidle', timeout: 60000 });
+  await pg.waitForTimeout(3000);
+  let overlap = null;
+  for (let i = 0; i < 90 && !overlap; i++) {
+    await pg.mouse.wheel(0, 220);
+    await pg.waitForTimeout(160);
+    const shown = await pg.evaluate(() => {
+      const sec = document.querySelector('section[aria-label="How the market engine works"]');
+      if (!sec) return [];
+      return [...sec.querySelectorAll(':scope > div > div')]
+        .filter(d => d.querySelector('h3'))
+        .map(d => { const cs = getComputedStyle(d); return { n: d.querySelector('div')?.textContent, o: cs.visibility === 'hidden' ? 0 : +cs.opacity }; })
+        .filter(x => x.o > 0.12);
+    });
+    if (shown.length > 1) overlap = shown;
+  }
+  if (overlap) { failed++; console.log('FAIL watch chapters overlap :: ' + JSON.stringify(overlap)); }
+  else console.log('PASS watch chapters never overlap');
+  await pg.close();
+}
+
+console.log(JSON.stringify({ total: ROUTES.length + 1, failed }));
 await b.close();
