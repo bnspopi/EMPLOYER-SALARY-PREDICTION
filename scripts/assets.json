@@ -7,7 +7,8 @@
     "robot.glb": "https://d8j0ntlcm91z4.cloudfront.net/user_3CJevPIJBGXUHh1JBO6GG07pPwA/hf_20260903_091405_0b930bf0-0172-44b4-8823-85d24cd2265f.glb",
     "watch.glb": "https://d8j0ntlcm91z4.cloudfront.net/user_3CJevPIJBGXUHh1JBO6GG07pPwA/hf_20260903_091407_c2445475-c563-4e04-98e5-d2e994d978e1.glb",
     "employee.png": "https://d2ol7oe51mr4n9.cloudfront.net/user_3CJevPIJBGXUHh1JBO6GG07pPwA/5a04284c-35ff-4c66-b0ca-d0f3af9dfdcb.png",
-    "presenter.png": "https://dnznrvs05pmza.cloudfront.net/gemini/gemini-3-pro-image/images/8015a121-e426-4ef0-aa97-c3a9447dfb0a/Photorealistic_cinematic_wide_shot_of_a_real_man_in_his_earl.png?_jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXlIYXNoIjoiNjIzM2U4ZjdkYTllMTQ1MiIsImJ1Y2tldCI6InJ1bndheS10YXNrLWFydGlmYWN0cyIsInN0YWdlIjoicHJvZCIsImV4cCI6MTc4ODY2MDM0M30.3lKjcSa4N1jrqKarq550GTGJh1l5f-jVmitY18m2-oM"
+    "presenter.png": "https://dnznrvs05pmza.cloudfront.net/gemini/gemini-3-pro-image/images/8015a121-e426-4ef0-aa97-c3a9447dfb0a/Photorealistic_cinematic_wide_shot_of_a_real_man_in_his_earl.png?_jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXlIYXNoIjoiNjIzM2U4ZjdkYTllMTQ1MiIsImJ1Y2tldCI6InJ1bndheS10YXNrLWFydGlmYWN0cyIsInN0YWdlIjoicHJvZCIsImV4cCI6MTc4ODY2MDM0M30.3lKjcSa4N1jrqKarq550GTGJh1l5f-jVmitY18m2-oM",
+    "robot-full.glb": "https://d8j0ntlcm91z4.cloudfront.net/user_3CJevPIJBGXUHh1JBO6GG07pPwA/hf_20260904_144739_89956676-31f6-487b-911d-6d2e6348f8db.glb"
   },
   "outputs": {
     "public/images/robot-face.jpg": {
@@ -39,6 +40,12 @@
       "from": "presenter.png",
       "width": 2400,
       "quality": 82
+    },
+    "public/models/robot-full.glb": {
+      "from": "robot-full.glb",
+      "textureSize": 2048,
+      "simplifyRatio": 1,
+      "note": "Full-body humanoid robot (Higgsfield sam_3_3d). Only 4,767 verts, so do NOT simplify \u2014 detail lives in the texture."
     }
   }
 }
