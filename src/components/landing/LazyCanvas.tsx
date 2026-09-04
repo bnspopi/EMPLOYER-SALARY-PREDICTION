@@ -8,16 +8,22 @@ import { cn } from "@/lib/utils";
  * can switch to `frameloop="demand"` when scrolled away. Once the canvas scrolls far
  * out of view (past a wider margin) it unmounts so R3F disposes the WebGL context —
  * keeping at most one live context around the viewport instead of three for the
- * session. The poster stays mounted throughout. Renders the poster forever when
- * `reduced` (prefers-reduced-motion) is set.
+ * session. Renders the poster forever when `reduced` (prefers-reduced-motion) is set.
+ *
+ * `poster` stays mounted throughout, so it must be a backdrop the live scene can
+ * sit on top of. Pass `still` when the standalone fallback should show something
+ * the backdrop deliberately leaves out — the subject the 3D scene draws, which
+ * would otherwise be doubled behind the canvas.
  */
 export function LazyCanvas({
   poster,
+  still,
   reduced = false,
   className,
   children,
 }: {
   poster: ReactNode;
+  still?: ReactNode;
   reduced?: boolean;
   className?: string;
   children: (active: boolean) => ReactNode;
@@ -59,7 +65,11 @@ export function LazyCanvas({
   return (
     <div ref={ref} className={cn("absolute inset-0", className)}>
       {poster}
-      {!reduced && mounted ? <div className="absolute inset-0">{children(active)}</div> : null}
+      {!reduced && mounted ? (
+        <div className="absolute inset-0">{children(active)}</div>
+      ) : (
+        still ?? null
+      )}
     </div>
   );
 }

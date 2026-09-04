@@ -5,14 +5,19 @@ import * as THREE from "three";
 import type { ClickTarget } from "@/hooks/useClickTarget";
 
 /** Distance in front of the robot where the "screen" the robot taps sits. */
-const PLANE_Z = 1.9;
+const PLANE_Z = 2.1;
 /** Upper-arm and forearm lengths — long, as a reaching robot arm would be. */
-const L1 = 2.6;
-const L2 = 2.45;
-/** The arm grows out of the body's right shoulder cap (see <RobotBody />). */
-const SHOULDER = new THREE.Vector3(-1.39, -1.16, 0.12);
-/** Where the hand parks when idle — down at the robot's side. */
-const REST = new THREE.Vector3(-1.85, -4.1, 0.3);
+const L1 = 3.3;
+const L2 = 3.1;
+/**
+ * The arm is mounted off to the left and well in front of the figure, not on its
+ * shoulder: <RobotFull /> already has two arms of its own, so a third sprouting
+ * from its chest would read as a defect. Anchored out here it reads the way the
+ * brief asks for — a separate manipulator reaching in from behind the screen.
+ */
+const SHOULDER = new THREE.Vector3(-4.3, -1, 1.5);
+/** Where the hand parks when idle — hanging down, clear of the figure. */
+const REST = new THREE.Vector3(-5.1, -4.8, 1.2);
 
 const REACH_IN = 0.3; // s — time to extend
 const HOLD = 0.16; // s — tap dwell
@@ -93,7 +98,7 @@ function Finger({ position, len, curl, splay = 0, radius = 0.026 }: FingerProps)
  */
 function Hand({ tipRef }: { tipRef: React.RefObject<THREE.MeshStandardMaterial | null> }) {
   return (
-    <group position={[0, 0, L2]} scale={1.5}>
+    <group position={[0, 0, L2]} scale={1.9}>
       {/* wrist pivot */}
       <mesh>
         <sphereGeometry args={[0.062, 18, 18]} />
@@ -169,8 +174,8 @@ export function RobotArm({ click }: { click: React.MutableRefObject<ClickTarget>
       const t = Math.abs(v.dir.z) < 1e-4 ? 0 : (PLANE_Z - camera.position.z) / v.dir.z;
       v.hit.copy(camera.position).addScaledVector(v.dir, t);
       // Keep the tap inside a believable reach envelope around the head.
-      v.hit.x = THREE.MathUtils.clamp(v.hit.x, -1.5, 1.5);
-      v.hit.y = THREE.MathUtils.clamp(v.hit.y, -1.2, 1.3);
+      v.hit.x = THREE.MathUtils.clamp(v.hit.x, -2.6, 2.6);
+      v.hit.y = THREE.MathUtils.clamp(v.hit.y, -1.7, 2.1);
     }
 
     // Drive the reach envelope: extend → hold (with a small poke) → retract.
@@ -224,27 +229,41 @@ export function RobotArm({ click }: { click: React.MutableRefObject<ClickTarget>
 
   return (
     <>
+      {/* Mounting boom: the shoulder is not attached to the figure, so without a
+          visible armature the joint reads as a chrome ball floating in the air.
+          The boom runs back and out of frame, selling "mounted off-screen". */}
+      <group position={[SHOULDER.x, SHOULDER.y, SHOULDER.z]}>
+        <mesh position={[-1.55, 0.1, -1]} rotation={[0, -0.55, 1.49]}>
+          <cylinderGeometry args={[0.17, 0.23, 3.4, 20]} />
+          <meshStandardMaterial {...chrome} />
+        </mesh>
+        <mesh position={[-0.45, 0.05, -0.28]}>
+          <sphereGeometry args={[0.24, 20, 20]} />
+          <meshStandardMaterial {...joint} />
+        </mesh>
+      </group>
+
       <group ref={shoulder} position={SHOULDER.toArray()}>
         {/* shoulder ball */}
         <mesh>
-          <sphereGeometry args={[0.27, 24, 24]} />
+          <sphereGeometry args={[0.34, 24, 24]} />
           <meshStandardMaterial {...joint} />
         </mesh>
         <group ref={upper}>
           {/* upper arm along +Z */}
           <mesh position={[0, 0, L1 / 2]} rotation={[Math.PI / 2, 0, 0]}>
-            <capsuleGeometry args={[0.15, L1 - 0.34, 8, 16]} />
+            <capsuleGeometry args={[0.19, L1 - 0.43, 8, 16]} />
             <meshStandardMaterial {...chrome} />
           </mesh>
           <group ref={fore} position={[0, 0, L1]}>
             {/* elbow */}
             <mesh>
-              <sphereGeometry args={[0.19, 20, 20]} />
+              <sphereGeometry args={[0.24, 20, 20]} />
               <meshStandardMaterial {...joint} />
             </mesh>
             {/* forearm along +Z */}
             <mesh position={[0, 0, L2 / 2]} rotation={[Math.PI / 2, 0, 0]}>
-              <capsuleGeometry args={[0.13, L2 - 0.36, 8, 16]} />
+              <capsuleGeometry args={[0.165, L2 - 0.46, 8, 16]} />
               <meshStandardMaterial {...chrome} />
             </mesh>
             {/* hand */}
@@ -255,7 +274,7 @@ export function RobotArm({ click }: { click: React.MutableRefObject<ClickTarget>
 
       {/* tap ripple at the touch point */}
       <mesh ref={ring} visible={false} rotation={[0, 0, 0]}>
-        <ringGeometry args={[0.16, 0.2, 40]} />
+        <ringGeometry args={[0.2, 0.25, 40]} />
         <meshBasicMaterial color="#4ad9ff" transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} toneMapped={false} />
       </mesh>
     </>

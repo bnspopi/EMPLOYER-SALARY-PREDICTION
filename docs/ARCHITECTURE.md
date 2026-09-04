@@ -61,10 +61,11 @@ Profile (parsed resume), SkillRating, MarketEstimate, ResumeScore, Improvement, 
 Seed data in `src/data/`: `roles.ts` (≥40 roles, medians by level), `cities.ts` (US/CA/UK + remote multipliers), `skills.ts` (taxonomy, aliases, driver weights, category), `certs.ts`, `courses.ts`, `jobs.ts` (≥40 listings), `guides.ts` (18 guides; SE + DevOps use the verified numbers), `industries.ts`, `blog.ts`, `faq.ts`, `testimonials.ts`.
 
 ## 3D & motion (`src/components/three/`)
-- `HeroScene.tsx` — canvas with `RobotHead` (GLB `/models/robot-head.glb`, mouse-look, idle float, cyan eye emissive) inside `Suspense`; on load error falls back to `ProceduralHead` (built from primitives) so the page never breaks. Scroll progress (0→1 across the hero) drives camera orbit + head yaw, Tesla-style.
+- `HeroScene.tsx` — canvas with `RobotFull` (GLB `/models/robot-full.glb`: a whole standing humanoid — head, torso, arms, legs) inside `Suspense`; on load error falls back to `ProceduralHead` + `RobotBody` so the page never breaks. Scroll progress (0→1 across the hero) pushes the camera from a wide shot of the whole figure to head-and-shoulders. `RobotArm` is a separate two-bone IK manipulator on an off-screen boom that taps whatever the visitor clicks in the top sections.
 - `WatchScene.tsx` — `WatchModel` (GLB `/models/watch.glb`, fallback `ProceduralWatch`) with a scroll-scrubbed macro push-in through three chapters.
 - `useScrollProgress(ref)` hook, `Lights.tsx`, `Env.tsx` (drei `Environment` preset "studio"/"night", no external HDR fetch).
 - Reduced motion: if `prefers-reduced-motion`, render poster images instead of canvases.
+- `LazyCanvas` takes two plates: `poster` stays mounted *behind* the live canvas (so it must be a backdrop — the empty studio, not the robot, or the subject is doubled) and `still` renders only when the canvas is absent (reduced motion, pre-mount).
 
 ## Conventions
 - Server components by default; add `"use client"` only where hooks/state are used.
@@ -74,8 +75,9 @@ Seed data in `src/data/`: `roles.ts` (≥40 roles, medians by level), `cities.ts
 - Do not run `next build` from parallel agents (shared `.next`); type-check with `tsc --noEmit` instead. Only the integration step runs the full build.
 
 ## Asset facts (as committed)
-- `public/models/robot-head.glb` (4.0 MB, meshopt + WebP textures): chrome android head on a pedestal, Y-up, face toward +Z. Fit by bounding box; ~1.0 unit tall.
+- `public/models/robot-full.glb` (128 KB, meshopt + WebP textures): full standing humanoid robot, Y-up, facing +Z, bbox 0.34 × 1.00 × 0.17. **One welded mesh, no skeleton** — the whole body turns to follow the cursor, nothing can be posed independently. Only 4,767 verts, so it is never simplified in CI; ships flat per-face normals, which `RobotFull` welds and re-smooths at load. It has no eyes: `RobotFull` raycasts the face from in front and plants emissive lenses on the surface it actually hits, rather than guessing coordinates (a guess lands on the cheek).
+- `public/models/robot-head.glb` (4.0 MB, meshopt + WebP textures): chrome android head on a pedestal, Y-up, face toward +Z. **Superseded as the hero figure** — it is a single merged 393k-vert mesh whose capsule pod cannot be hidden, so it can never read as a full body at wide framing. Still fetched; no longer used by `HeroScene`.
 - `public/models/watch.glb` (4.3 MB): luxury watch with curved strap. **Dial faces +Y** — rotate `x = +Math.PI/2` so the dial faces the camera; rose-gold indices, black dial.
-- `public/images/robot-face.jpg|webp` (1600px), `public/images/watch.jpg`, `public/images/studio-backdrop.jpg|webp` (2400px), `public/images/employee-backdrop.jpg` (2400px, arrives via the fetch-assets workflow; treat as optional).
+- `public/images/robot-full.jpg|webp` — the hero `still`, rendered offline from the live scene, not generated. `public/images/robot-face.jpg|webp` (1600px), `public/images/watch.jpg`, `public/images/studio-backdrop.jpg|webp` (2400px), `public/images/employee-backdrop.jpg` (2400px, arrives via the fetch-assets workflow; treat as optional).
 - `src/data/films.json` — optional scroll-scrub film URLs (`robot`, `watch`, `employee`), all `null` unless Runway films are generated later. `ScrollFilm` uses the film when present, otherwise renders its 3D children.
 - drei `useGLTF` enables the meshopt decoder by default; do not use Draco. Do not use `Environment preset=…` (it fetches an HDR from a CDN) — build the environment from `<Lightformer>`s or plain lights.

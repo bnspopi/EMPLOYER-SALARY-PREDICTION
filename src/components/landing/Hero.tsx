@@ -41,7 +41,10 @@ export function Hero() {
         <div className="absolute inset-0 z-10">
           <LazyCanvas
             reduced={reduced}
-            poster={<Poster src="/images/robot-face.webp" alt="" overlay="none" />}
+            // The backdrop stays behind the live canvas, so it is the empty studio:
+            // the robot itself is drawn in 3D, and a robot plate here doubled it.
+            poster={<Poster src="/images/studio-backdrop.webp" alt="" overlay="dim" />}
+            still={<Poster src="/images/robot-full.webp" alt="" overlay="none" />}
           >
             {(active) => <HeroScene progress={progress} active={active} dpr={reduced ? 1 : 1.75} />}
           </LazyCanvas>

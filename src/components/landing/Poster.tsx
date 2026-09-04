@@ -2,7 +2,13 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
-/** Static image stand-in for a canvas (loading + reduced-motion fallback). Hides itself if the image 404s. */
+/**
+ * Static image stand-in for a canvas (loading + reduced-motion fallback). Hides
+ * itself if the image 404s.
+ *
+ * `overlay="dim"` adds a dark scrim on top of the vignette, for a plate that
+ * stays on screen as a backdrop and must not compete with type laid over it.
+ */
 export function Poster({
   src,
   alt,
@@ -12,7 +18,7 @@ export function Poster({
   src: string;
   alt: string;
   className?: string;
-  overlay?: "vignette" | "none";
+  overlay?: "vignette" | "dim" | "none";
 }) {
   const [failed, setFailed] = useState(false);
   return (
@@ -23,12 +29,13 @@ export function Poster({
           src={src}
           alt={alt}
           onError={() => setFailed(true)}
-          className="h-full w-full object-cover opacity-80"
+          className={cn("h-full w-full object-cover", overlay === "dim" ? "opacity-45" : "opacity-80")}
         />
       ) : (
         <div className="grid-bg h-full w-full opacity-40" />
       )}
-      {overlay === "vignette" ? <div className="vignette pointer-events-none absolute inset-0" /> : null}
+      {overlay !== "none" ? <div className="vignette pointer-events-none absolute inset-0" /> : null}
+      {overlay === "dim" ? <div className="pointer-events-none absolute inset-0 bg-bg/55" /> : null}
     </div>
   );
 }
