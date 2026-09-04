@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
@@ -8,7 +8,19 @@ import type { MotionValue } from "framer-motion";
 import type { PointerState } from "@/hooks/usePointer";
 import type { ClickTarget } from "@/hooks/useClickTarget";
 import { buildRobotRig, solveArmIK, type ArmSegments } from "./robotArmRig";
-import { GESTURE, HOLD, REACH_IN, REACH_OUT, RIPPLE } from "@/lib/gesture";
+import {
+  GESTURE,
+  GREET_DELAY,
+  GREET_IN,
+  GREET_OUT,
+  GREET_SWING,
+  GREET_TOTAL,
+  GREET_WAVE,
+  HOLD,
+  REACH_IN,
+  REACH_OUT,
+  RIPPLE,
+} from "@/lib/gesture";
 
 const MODEL = "/models/robot-full.glb";
 
@@ -45,6 +57,22 @@ const EYE_HEIGHT = 0.943;
 const EYE_SPREAD = 0.0195;
 const EYE_R = 0.0052;
 const FORWARD = new THREE.Vector3(0, 0, 1);
+
+/** The robot waves with the hand on screen-left — a greeting hand, mirrored. */
+const GREET_ARM = 0;
+/** Raised-hand pose, as fractions of the arm's own span from its shoulder. */
+const GREET_OUT_X = 0.38;
+const GREET_UP = 0.36;
+const GREET_FWD = 0.52;
+/** How far the hand swings either side while waving. */
+const GREET_SWAY = 0.18;
+
+/**
+ * Greet once per page load. The hero canvas unmounts when it is scrolled well
+ * past and remounts on the way back, and a robot that waves every time you
+ * scroll up stops reading as a welcome.
+ */
+let greeted = false;
 
 /**
  * Re-expresses a geometry with plain float attributes.
@@ -190,6 +218,8 @@ interface Props {
   progress: MotionValue<number>;
   pointer: React.MutableRefObject<PointerState>;
   click?: React.MutableRefObject<ClickTarget>;
+  /** Fires once the model has resolved, so the poster can hand over cleanly. */
+  onReady?: () => void;
 }
 
 /**
@@ -201,7 +231,7 @@ interface Props {
  * you click something in the top sections the robot reaches out and taps it with
  * its own hand — the one on the side you clicked.
  */
-export function RobotFull({ progress, pointer, click }: Props) {
+export function RobotFull({ progress, pointer, click, onReady }: Props) {
   const { scene } = useGLTF(MODEL, false);
   const group = useRef<THREE.Group>(null);
   // One pair of joints per arm: index 0 is the arm on screen-left.
@@ -293,9 +323,14 @@ export function RobotFull({ progress, pointer, click }: Props) {
     return { rig, material, eyes: found };
   }, [scene]);
 
+  // This component only renders once useGLTF has resolved, so mounting is the
+  // signal that there is something to look at.
+  useEffect(() => onReady?.(), [onReady]);
+
   // Animation scratch kept in refs (not useMemo) so it is legitimately mutable
   // across frames without tripping the "don't mutate after render" rule.
   const arm = useRef({ seq: 0, start: -1, reach: 0, side: 0 as 0 | 1 });
+  const greet = useRef({ start: -1, armed: !greeted });
   const vecs = useRef({
     hit: new THREE.Vector3(),
     target: new THREE.Vector3(),
@@ -311,6 +346,33 @@ export function RobotFull({ progress, pointer, click }: Props) {
     const t = state.clock.elapsedTime;
     const p = progress.get();
     const ptr = pointer.current;
+
+    // ---- hello ----
+    const v = vecs.current;
+    const s = arm.current;
+    const gr = greet.current;
+    if (gr.armed && gr.start < 0) {
+      gr.armed = false;
+      greeted = true;
+      gr.start = t + GREET_DELAY;
+    }
+    let greetAmt = 0;
+    let swing = 0;
+    if (gr.start >= 0 && t >= gr.start) {
+      const e = t - gr.start;
+      if (e < GREET_IN) {
+        greetAmt = easeOutCubic(e / GREET_IN);
+      } else if (e < GREET_IN + GREET_WAVE) {
+        greetAmt = 1;
+        swing = Math.sin((e - GREET_IN) * GREET_SWING);
+      } else if (e < GREET_TOTAL) {
+        greetAmt = 1 - easeInOutCubic((e - GREET_IN - GREET_WAVE) / GREET_OUT);
+        // Let the swing die out rather than stopping dead as the arm drops.
+        swing = Math.sin((e - GREET_IN) * GREET_SWING) * greetAmt;
+      } else {
+        gr.start = -1;
+      }
+    }
 
     // Follow the cursor; before the visitor moves one, drift gently on its own.
     let lookX = ptr.x;
@@ -329,6 +391,12 @@ export function RobotFull({ progress, pointer, click }: Props) {
         lookX = lookX * (1 - w) + c.x * w;
         lookY = lookY * (1 - w) + -c.y * w;
       }
+    }
+
+    // Look at the visitor while greeting them, rather than drifting.
+    if (greetAmt > 0 && !ptr.moved) {
+      lookX *= 1 - greetAmt;
+      lookY *= 1 - greetAmt;
     }
 
     // Yaw is free: the head sits on the axis of rotation, so turning the body
@@ -356,9 +424,10 @@ export function RobotFull({ progress, pointer, click }: Props) {
     if (irisB.current) irisB.current.emissiveIntensity = glow;
 
     // ---- the near hand reaches out and taps whatever was clicked ----
-    const v = vecs.current;
-    const s = arm.current;
     if (c && c.seq !== s.seq) {
+      // A visitor who clicks has already been greeted; drop the wave mid-air.
+      gr.start = -1;
+      greetAmt = 0;
       s.seq = c.seq;
       s.start = t;
       // Reach with the hand on the side that was clicked, so the robot never
@@ -406,6 +475,18 @@ export function RobotFull({ progress, pointer, click }: Props) {
       v.target.copy(a.restWrist).lerp(v.hit, reach);
       v.target.z += reach * poke;
       if (reach < 0.02) v.target.y += Math.sin(t * 0.9 + i) * 0.03;
+      if (i === GREET_ARM && greetAmt > 0) {
+        // Hand up beside the head, swinging side to side. Placed off the arm's
+        // own span so it stays inside its reach whatever the rig measures.
+        const span = a.l1 + a.l2;
+        const out = a.shoulder.x < 0 ? -1 : 1;
+        v.tmp.set(
+          a.shoulder.x + out * (GREET_OUT_X + swing * GREET_SWAY) * span,
+          a.shoulder.y + GREET_UP * span,
+          a.shoulder.z + GREET_FWD * span,
+        );
+        v.target.lerp(v.tmp, greetAmt * (1 - reach));
+      }
       solveArmIK(a, v.target, v.q1, v.q2);
       const [sh, el] = joints[i];
       if (sh.current) sh.current.quaternion.slerp(v.q1, ik);

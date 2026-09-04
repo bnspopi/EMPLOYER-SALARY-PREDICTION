@@ -1,5 +1,5 @@
 "use client";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { motion, useTransform } from "framer-motion";
@@ -16,6 +16,8 @@ export function Hero() {
   const ref = useRef<HTMLDivElement>(null);
   const progress = useScrollProgress(ref);
   const reduced = useReducedMotion();
+  // The still holds the frame until the robot is actually on screen.
+  const [ready, setReady] = useState(false);
 
   const headlineScale = useTransform(progress, [0, 0.6], [1, 1.15]);
   const headlineOpacity = useTransform(progress, [0, 0.5], [1, 0]);
@@ -45,8 +47,16 @@ export function Hero() {
             // the robot itself is drawn in 3D, and a robot plate here doubled it.
             poster={<Poster src="/images/studio-backdrop.webp" alt="" overlay="dim" />}
             still={<Poster src="/images/robot-full.webp" alt="" overlay="none" />}
+            ready={ready}
           >
-            {(active) => <HeroScene progress={progress} active={active} dpr={reduced ? 1 : 1.75} />}
+            {(active) => (
+              <HeroScene
+                progress={progress}
+                active={active}
+                dpr={reduced ? 1 : 1.75}
+                onReady={() => setReady(true)}
+              />
+            )}
           </LazyCanvas>
         </div>
 

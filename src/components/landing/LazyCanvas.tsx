@@ -14,16 +14,23 @@ import { cn } from "@/lib/utils";
  * sit on top of. Pass `still` when the standalone fallback should show something
  * the backdrop deliberately leaves out — the subject the 3D scene draws, which
  * would otherwise be doubled behind the canvas.
+ *
+ * `ready` covers the gap between the canvas mounting and its contents actually
+ * being loadable. Dropping the still on mount alone empties the frame until the
+ * model arrives, which is most of the first impression.
  */
 export function LazyCanvas({
   poster,
   still,
+  ready = true,
   reduced = false,
   className,
   children,
 }: {
   poster: ReactNode;
   still?: ReactNode;
+  /** False while the canvas is mounted but its scene has nothing to show yet. */
+  ready?: boolean;
   reduced?: boolean;
   className?: string;
   children: (active: boolean) => ReactNode;
@@ -65,11 +72,8 @@ export function LazyCanvas({
   return (
     <div ref={ref} className={cn("absolute inset-0", className)}>
       {poster}
-      {!reduced && mounted ? (
-        <div className="absolute inset-0">{children(active)}</div>
-      ) : (
-        still ?? null
-      )}
+      {!reduced && mounted ? <div className="absolute inset-0">{children(active)}</div> : null}
+      {reduced || !mounted || !ready ? still ?? null : null}
     </div>
   );
 }

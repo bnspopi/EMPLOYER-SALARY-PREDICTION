@@ -60,9 +60,11 @@ interface Props {
   progress: MotionValue<number>;
   active: boolean;
   dpr?: number;
+  /** Fires once the robot is loaded and about to be drawn. */
+  onReady?: () => void;
 }
 
-export default function HeroScene({ progress, dpr = 1.75 }: Props) {
+export default function HeroScene({ progress, dpr = 1.75, onReady }: Props) {
   const pointer = usePointer();
   const click = useClickTarget();
   const fallback = <ProceduralFallback progress={progress} pointer={pointer} click={click} />;
@@ -80,7 +82,7 @@ export default function HeroScene({ progress, dpr = 1.75 }: Props) {
       <SceneLights />
       <Suspense fallback={fallback}>
         <ModelErrorBoundary fallback={fallback}>
-          <RobotFull progress={progress} pointer={pointer} click={click} />
+          <RobotFull progress={progress} pointer={pointer} click={click} onReady={onReady} />
           <StudioEnv />
         </ModelErrorBoundary>
       </Suspense>
