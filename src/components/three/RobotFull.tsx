@@ -32,6 +32,21 @@ const easeInOutCubic = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2
 const jointMat = { color: "#8b939c", metalness: 0.85, roughness: 0.44 };
 
 /**
+ * Eye placement, as fractions of standing height.
+ *
+ * The sculpt ships without eyes, and without sockets deep enough to find by
+ * probing — a depth sweep across the face returns a smooth surface with a single
+ * nose ridge and no concavity. So the position comes from proportion instead:
+ * the eye line sits 45% down the head, and the pupils half a face half-width out
+ * from centre. Depth and surface angle still come from a ray cast at the face,
+ * so the eyes lie flush against it however the head is actually shaped.
+ */
+const EYE_HEIGHT = 0.943;
+const EYE_SPREAD = 0.0195;
+const EYE_R = 0.0052;
+const FORWARD = new THREE.Vector3(0, 0, 1);
+
+/**
  * Re-expresses a geometry with plain float attributes.
  *
  * The optimized GLB stores positions as normalized integers (meshopt
@@ -55,6 +70,72 @@ function toFloatGeometry(src: THREE.BufferGeometry): THREE.BufferGeometry {
   const index = src.getIndex();
   if (index) g.setIndex(Array.from(index.array as ArrayLike<number>));
   return g;
+}
+
+/**
+ * One eye: a rim sunk into the face, a lit iris and pupil beneath a glossy dome,
+ * and a catchlight on the dome — the highlight is what actually reads as an eye
+ * rather than a glowing dot stuck on the front of the head.
+ */
+function Eye({
+  position,
+  quaternion,
+  r,
+  irisRef,
+}: {
+  position: [number, number, number];
+  quaternion: [number, number, number, number];
+  r: number;
+  irisRef: React.RefObject<THREE.MeshStandardMaterial | null>;
+}) {
+  return (
+    <group position={position} quaternion={quaternion}>
+      {/* rim, seated into the face */}
+      <mesh position={[0, 0, -r * 0.12]}>
+        <ringGeometry args={[r * 1.0, r * 1.22, 32]} />
+        <meshStandardMaterial color="#212930" metalness={0.8} roughness={0.55} side={THREE.DoubleSide} />
+      </mesh>
+      {/* back of the socket, so the dome has something dark behind it */}
+      <mesh position={[0, 0, -r * 0.05]}>
+        <circleGeometry args={[r * 0.98, 28]} />
+        <meshStandardMaterial color="#05090c" metalness={0.3} roughness={0.6} />
+      </mesh>
+      {/* lit iris */}
+      <mesh position={[0, 0, r * 0.04]}>
+        <ringGeometry args={[r * 0.3, r * 0.86, 32]} />
+        <meshStandardMaterial
+          ref={irisRef}
+          color="#2ec9ff"
+          emissive="#14bfff"
+          emissiveIntensity={2.2}
+          toneMapped={false}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+      {/* pupil */}
+      <mesh position={[0, 0, r * 0.07]}>
+        <circleGeometry args={[r * 0.32, 24]} />
+        <meshBasicMaterial color="#04080b" toneMapped={false} />
+      </mesh>
+      {/* glossy dome over it all */}
+      <mesh scale={[1, 0.86, 0.52]}>
+        <sphereGeometry args={[r, 24, 18]} />
+        <meshStandardMaterial
+          color="#0d161c"
+          metalness={0.3}
+          roughness={0.05}
+          envMapIntensity={2.6}
+          transparent
+          opacity={0.22}
+        />
+      </mesh>
+      {/* catchlight */}
+      <mesh position={[-r * 0.31, r * 0.27, r * 0.5]}>
+        <circleGeometry args={[r * 0.16, 16]} />
+        <meshBasicMaterial color="#ffffff" toneMapped={false} transparent opacity={0.92} />
+      </mesh>
+    </group>
+  );
 }
 
 function Arm({
@@ -131,6 +212,8 @@ export function RobotFull({ progress, pointer, click }: Props) {
   const wristL = useRef<THREE.Group>(null);
   const wristRt = useRef<THREE.Group>(null);
   const ring = useRef<THREE.Mesh>(null);
+  const irisA = useRef<THREE.MeshStandardMaterial>(null);
+  const irisB = useRef<THREE.MeshStandardMaterial>(null);
 
   const { rig, material, eyes } = useMemo(() => {
     const clone = scene.clone(true);
@@ -187,13 +270,25 @@ export function RobotFull({ progress, pointer, click }: Props) {
     // actually hits. Eye line sits at ~92.5% of standing height, the usual
     // humanoid proportion, and the pupils a little inboard.
     const probe = new THREE.Mesh(rig.body);
+    const pbox = new THREE.Box3().setFromObject(probe);
+    const ph = pbox.max.y - pbox.min.y;
+    const cx = (pbox.min.x + pbox.max.x) / 2;
     const ray = new THREE.Raycaster();
-    const eyeY = ROBOT_GROUND + ROBOT_HEIGHT * 0.925 - (ROBOT_GROUND + HIP);
-    const found: [number, number, number][] = [];
-    for (const dx of [-ROBOT_HEIGHT * 0.029, ROBOT_HEIGHT * 0.029]) {
-      ray.set(new THREE.Vector3(dx, eyeY, ROBOT_HEIGHT), new THREE.Vector3(0, 0, -1));
+    const eyeY = pbox.min.y + EYE_HEIGHT * ph;
+    const found: { position: [number, number, number]; quaternion: [number, number, number, number] }[] = [];
+    for (const side of [-1, 1]) {
+      ray.set(new THREE.Vector3(cx + side * EYE_SPREAD * ph, eyeY, ph), new THREE.Vector3(0, 0, -1));
       const hit = ray.intersectObject(probe, false)[0];
-      if (hit) found.push([hit.point.x, hit.point.y, hit.point.z + 0.005]);
+      if (!hit?.face) continue;
+      const n = hit.face.normal.clone().normalize();
+      if (n.z < 0) n.negate();
+      const q = new THREE.Quaternion().setFromUnitVectors(FORWARD, n);
+      // Sit the centre a hair proud; the head's curvature sinks the rim in.
+      const out = ph * 0.0012;
+      found.push({
+        position: [hit.point.x + n.x * out, hit.point.y + n.y * out, hit.point.z + n.z * out],
+        quaternion: [q.x, q.y, q.z, q.w],
+      });
     }
     return { rig, material, eyes: found };
   }, [scene]);
@@ -251,6 +346,14 @@ export function RobotFull({ progress, pointer, click }: Props) {
     g.position.y = ROBOT_GROUND + HIP + Math.sin(t * 1.1) * 0.035;
     g.position.x = Math.sin(t * 0.42) * 0.07;
     g.scale.y = 1 + Math.sin(t * 1.1) * 0.006;
+
+    // The iris breathes, with an occasional fast dip — a blink is the cheapest
+    // cue that reads as alive rather than as a lamp left on.
+    const phase = (t * 0.19) % 1;
+    const blink = phase < 0.055 ? Math.sin((phase / 0.055) * Math.PI) : 0;
+    const glow = Math.max(0.2, 2.2 + Math.sin(t * 1.3) * 0.35 - blink * 2.1);
+    if (irisA.current) irisA.current.emissiveIntensity = glow;
+    if (irisB.current) irisB.current.emissiveIntensity = glow;
 
     // ---- the near hand reaches out and taps whatever was clicked ----
     const v = vecs.current;
@@ -342,16 +445,23 @@ export function RobotFull({ progress, pointer, click }: Props) {
       <Arm arm={rig.arms[0]} rig={rig} material={material} shoulderRef={shoulderL} elbowRef={elbowL} wristRef={wristL} />
       <Arm arm={rig.arms[1]} rig={rig} material={material} shoulderRef={shoulderR} elbowRef={elbowR} wristRef={wristRt} />
 
-      {/* Flattened against the face so they read as inset lenses rather than
-          headlamps bolted on the front. */}
-      {eyes.map((e) => (
-        <mesh key={`${e[0]},${e[1]}`} position={e} scale={[1, 0.62, 0.3]}>
-          <sphereGeometry args={[ROBOT_HEIGHT * 0.0075, 20, 16]} />
-          <meshStandardMaterial color="#cdf3ff" emissive="#4ad9ff" emissiveIntensity={2.4} toneMapped={false} />
-        </mesh>
+      {eyes.map((e, i) => (
+        <Eye
+          key={e.position.join(",")}
+          position={e.position}
+          quaternion={e.quaternion}
+          r={ROBOT_HEIGHT * EYE_R}
+          irisRef={i === 0 ? irisA : irisB}
+        />
       ))}
       {eyes.length > 0 ? (
-        <pointLight position={[0, eyes[0][1], eyes[0][2] + 0.35]} color="#4ad9ff" intensity={2} distance={3} decay={2} />
+        <pointLight
+          position={[0, eyes[0].position[1], eyes[0].position[2] + 0.3]}
+          color="#4ad9ff"
+          intensity={1.4}
+          distance={2.6}
+          decay={2}
+        />
       ) : null}
 
       {/* Tap ripple at the touch point. */}
