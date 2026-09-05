@@ -8,51 +8,43 @@ import { ProceduralWatch } from "./ProceduralWatch";
 import { WatchMovement } from "./WatchMovement";
 import { ModelErrorBoundary } from "./ErrorBoundary";
 import { GoldEnv } from "./Env";
+import { usePointer } from "@/hooks/usePointer";
 
 const V = THREE.Vector3;
 
-function lerpV(out: THREE.Vector3, a: THREE.Vector3, b: THREE.Vector3, t: number) {
-  return out.copy(a).lerp(b, t);
-}
+/**
+ * The dial sits at z ≈ 0.42 and the case is 2.4 across, so at fov 42 the whole
+ * watch needs the camera about 3.1 out and the dial fills the frame at about
+ * 2.75. Any closer and the camera is inside the case: the old path ended at 1.4,
+ * which pushed straight through the crystal into unreadable brass. The push now
+ * runs the full length of the section and stops with the dial filling the frame.
+ */
+const FAR_Z = 5;
+const CLOSEST_Z = 2.35;
 
+/**
+ * A straight push onto the face of the watch.
+ *
+ * The camera stays on the dial's axis the whole way — no orbit, no oblique
+ * offset — so the visitor is always looking at the front of the watch rather
+ * than across its side. The near end stops at 2.7: the dial sits at z ≈ 0.42 and
+ * the case is 2.4 across, so at fov 42 that is where the dial fills the frame.
+ * The old path ran to 1.4, which put the camera inside the case and filled the
+ * screen with unreadable brass.
+ */
 function CameraPath({ progress }: { progress: MotionValue<number> }) {
-  const tmpPos = useRef(new V(0.8, 0.6, 4.2));
-  const tmpTarget = useRef(new V(0, 0, 0));
-  const kf = useMemo(
-    () => ({
-      posA: new V(0.8, 0.6, 4.2),
-      posB: new V(0, 0.2, 2.6),
-      posC: new V(0.4, -0.1, 1.4),
-      tgtA: new V(0, 0, 0),
-      tgtB: new V(0, 0, 0),
-      tgtC: new V(0, -0.35, 0),
-    }),
-    [],
-  );
+  const tmpPos = useRef(new V(0, 0, FAR_Z));
+  const target = useMemo(() => new V(0, 0, 0.3), []);
 
   useFrame((state, delta) => {
     const camera = state.camera;
-    const p = progress.get();
-    const pos = tmpPos.current;
-    const tgt = tmpTarget.current;
-    if (p < 0.33) {
-      const t = p / 0.33;
-      lerpV(pos, kf.posA, kf.posB, t);
-      lerpV(tgt, kf.tgtA, kf.tgtB, t);
-    } else if (p < 0.66) {
-      const t = (p - 0.33) / 0.33;
-      lerpV(pos, kf.posB, kf.posC, t);
-      lerpV(tgt, kf.tgtB, kf.tgtC, t);
-    } else {
-      const t = (p - 0.66) / 0.34;
-      lerpV(pos, kf.posB, kf.posC, 1);
-      lerpV(tgt, kf.tgtB, kf.tgtC, 1);
-      // slight orbit on the macro push
-      pos.x = kf.posC.x + Math.sin(t * Math.PI) * 0.35;
-    }
+    const p = THREE.MathUtils.clamp(progress.get(), 0, 1);
+    // Ease so the push settles onto the dial rather than arriving at full speed.
+    const eased = p * p * (3 - 2 * p);
+    tmpPos.current.set(0, 0, FAR_Z + (CLOSEST_Z - FAR_Z) * eased);
     const k = 1 - Math.pow(0.008, delta);
-    camera.position.lerp(pos, k);
-    camera.lookAt(tgt);
+    camera.position.lerp(tmpPos.current, k);
+    camera.lookAt(target);
   });
   return null;
 }
@@ -107,11 +99,12 @@ interface Props {
 }
 
 export default function WatchScene({ progress, dpr = 1.75 }: Props) {
+  const pointer = usePointer();
   return (
     <Canvas
       dpr={[1, dpr]}
       gl={{ antialias: true, powerPreference: "high-performance" }}
-      camera={{ position: [0.8, 0.6, 4.2], fov: 42 }}
+      camera={{ position: [0, 0, FAR_Z], fov: 42 }}
       frameloop="always"
     >
       <color attach="background" args={["#060708"]} />
@@ -123,8 +116,8 @@ export default function WatchScene({ progress, dpr = 1.75 }: Props) {
       <Suspense fallback={<ProceduralWatch />}>
         <ModelErrorBoundary fallback={<ProceduralWatch />}>
           <WatchModel />
-          {/* The case is a static mesh, so the running movement is layered on the dial. */}
-          <WatchMovement />
+          {/* The case is a static mesh; the hands and gear train are what move. */}
+          <WatchMovement progress={progress} pointer={pointer} />
           <GoldEnv />
         </ModelErrorBoundary>
       </Suspense>

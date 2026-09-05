@@ -6,7 +6,9 @@ import * as THREE from "three";
 const MODEL = "/models/watch.glb";
 
 /**
- * Watch GLB: the dial faces +Y in the asset, so rotate x = +PI/2 to face the camera.
+ * Watch GLB: the dial faces the camera only at rotation [PI/2, 0, PI/2] — the
+ * asset is a wrist cuff, so its bounding box is near-cubic and the dial axis
+ * cannot be inferred from geometry; this was found by rendering the candidates.
  * The case itself stays still — only <WatchMovement /> (the gear train and hands
  * layered on the dial) animates, so the watch reads as running rather than tumbling.
  */
@@ -25,8 +27,10 @@ export function WatchModel() {
     model.scale.setScalar(scale);
   }, [model]);
 
+  // The asset is centred on its bounding box, which includes the strap, so the
+  // dial sits left of the origin. Nudged back so the push-in lands on the face.
   return (
-    <group rotation={[Math.PI / 2, 0, 0]}>
+    <group rotation={[Math.PI / 2, 0, Math.PI / 2]} position={[0.39, 0.01, 0]}>
       <primitive object={model} />
     </group>
   );
